@@ -4,21 +4,61 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import uz.haksenguz.ertaklar.core.reading.Reading
+import uz.haksenguz.ertaklar.core.scoring.Scoring
+import uz.haksenguz.ertaklar.data.local.dao.ProfileDao
 import uz.haksenguz.ertaklar.data.local.dao.ProgressDao
 import uz.haksenguz.ertaklar.data.local.entities.BookRecordEntity
+import uz.haksenguz.ertaklar.data.local.entities.WordSeenEntity
 import uz.haksenguz.ertaklar.data.models.AnswerState
+import uz.haksenguz.ertaklar.data.models.Book
 import uz.haksenguz.ertaklar.data.models.BookRecord
 
 /** Reading progress per child and book. */
 @Singleton
 class ProgressRepository @Inject constructor(
     private val dao: ProgressDao,
+    private val profileDao: ProfileDao,
     private val json: Json
 ) {
+    /** Answers and page changes both rewrite a book's record; one at a time. */
+    private val mutex = Mutex()
+
     /** The child's records by book key. */
     fun records(profileId: String): Flow<Map<String, BookRecord>> =
         dao.observeRecords(profileId).map { list -> list.associate { it.book to it.toModel() } }
+
+    /** The child's record for one book (an empty one before they open it). */
+    fun record(profileId: String, key: String): Flow<BookRecord> = records(profileId).map { it[key] ?: BookRecord(key) }
+
+    /** The child settled on [view]: remember the page, collect its word card, or mark the book read. */
+    suspend fun settle(profileId: String, book: Book, view: Int): Reading.Settled? = mutex.withLock {
+        val current = load(profileId, book.key)
+        val settled = Reading.settle(current, book.pages.size, view, System.currentTimeMillis()) ?: return null
+        dao.upsert(settled.record.toEntity(profileId))
+        if (view in 1..book.pages.size) {
+            profileDao.setLastBook(profileId, book.key)
+            if (book.pages[view - 1].word != null) dao.addWord(WordSeenEntity(profileId, book.key, view))
+        }
+        settled
+    }
+
+    /** Answer [idx] to story page [view]'s question; a right answer earns its points. */
+    suspend fun answer(profileId: String, book: Book, view: Int, idx: Int): Reading.Outcome = mutex.withLock {
+        val question = book.pages.getOrNull(view - 1)?.question ?: return Reading.Outcome.Ignored
+        val current = load(profileId, book.key)
+        val (state, outcome) = Reading.answer(current.answers[view.toString()], question, view, idx)
+        if (outcome != Reading.Outcome.Ignored) {
+            dao.upsert(current.copy(answers = current.answers + (view.toString() to state)).toEntity(profileId))
+        }
+        if (outcome is Reading.Outcome.Right) profileDao.addPoints(profileId, Scoring.ANSWER)
+        outcome
+    }
+
+    private suspend fun load(profileId: String, key: String): BookRecord = dao.record(profileId, key)?.toModel() ?: BookRecord(key)
 
     private fun BookRecordEntity.toModel() = BookRecord(
         book = book,
@@ -30,5 +70,18 @@ class ProgressRepository @Inject constructor(
         compare = compare,
         answers = runCatching { json.decodeFromString<Map<String, AnswerState>>(answersJson) }.getOrDefault(emptyMap()),
         traced = runCatching { json.decodeFromString<List<String>>(tracedJson).toSet() }.getOrDefault(emptySet())
+    )
+
+    private fun BookRecord.toEntity(profileId: String) = BookRecordEntity(
+        profileId = profileId,
+        book = book,
+        page = page,
+        finished = finished,
+        finishedAt = finishedAt,
+        quiz = quiz,
+        orderWon = order,
+        compare = compare,
+        answersJson = json.encodeToString(answers),
+        tracedJson = json.encodeToString(traced.toList())
     )
 }

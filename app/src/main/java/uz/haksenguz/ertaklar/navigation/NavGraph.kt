@@ -15,7 +15,11 @@ fun NavGraph() {
             LibraryScreen(onOpenBook = { key, resume -> nav.navigate(ReaderRoute(key, resume)) })
         }
         composable<ReaderRoute> {
-            ReaderScreen(onBack = { nav.popBackStack() })
+            ReaderScreen(
+                onBack = { nav.popBackStack() },
+                // A twin tale opens in place of the one just finished.
+                onOpenBook = { key -> nav.navigate(ReaderRoute(key)) { popUpTo<ReaderRoute> { inclusive = true } } }
+            )
         }
     }
 }
