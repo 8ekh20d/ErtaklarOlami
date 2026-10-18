@@ -5,9 +5,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object LibraryRoute
 
-/** A book; [resume] opens it straight at the child's last page. */
+/** A book; [resume] opens it straight at the child's last page; [bedtime] reads tonight's pages calmly. */
 @Serializable
-data class ReaderRoute(val key: String, val resume: Boolean = false)
+data class ReaderRoute(val key: String, val resume: Boolean = false, val bedtime: Boolean = false)
 
 /** A book's final quiz ("Bilimdon testi"). */
 @Serializable

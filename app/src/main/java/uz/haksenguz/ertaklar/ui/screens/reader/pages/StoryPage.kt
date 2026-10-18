@@ -16,15 +16,25 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -36,6 +46,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import kotlin.math.abs
 import uz.haksenguz.ertaklar.core.text.Gloss
 import uz.haksenguz.ertaklar.core.text.Hangul
 import uz.haksenguz.ertaklar.data.models.AnswerState
@@ -75,6 +86,9 @@ private val KoOnBg = Color(0xFFFDECEE)
 private val ToggleBorder = Color(0xFFF1D8A8)
 private val ReadOnBg = Color(0xFFCCFBF1)
 
+/** The piece being read aloud. */
+private val Reading = Color(0xFFFDE68A)
+
 /** What the page shows under its Uzbek, and how a tap on an underlined word reaches the reader. */
 class PageHelpers(
     val korean: KoreanBook?,
@@ -87,7 +101,13 @@ class PageHelpers(
     val reading: Boolean,
     val onToggleKorean: () -> Unit,
     val onToggleReading: () -> Unit,
-    val onGloss: (Int) -> Unit
+    val onGloss: (Int) -> Unit,
+    /** Someone has read this page aloud: a tap on a piece plays it. */
+    val onSay: ((Int) -> Unit)? = null,
+    /** The piece being read aloud now (0 the title, then the sentences), or -1. */
+    val highlight: Int = -1,
+    /** Bedtime: the questions rest. */
+    val calm: Boolean = false
 )
 
 /**
@@ -123,7 +143,11 @@ fun StoryPage(
             Text(
                 storyText(page.title),
                 style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp, lineHeight = 30.sp),
-                color = PageTitle
+                color = PageTitle,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (helpers.highlight == 0) Reading else Color.Transparent)
+                    .then(helpers.onSay?.let { say -> Modifier.clickable { say(0) } } ?: Modifier)
             )
             when {
                 ko != null -> KoLine(ko.s.getOrElse(0) { "" })
@@ -137,12 +161,20 @@ fun StoryPage(
             helpers.readsOut -> sentences.map { Hangul.read(it) to false }
             else -> null
         }
+        val text = pageText(sentences, lines, book.verse, helpers, display, headingFont)
+        var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
         Text(
-            pageText(sentences, lines, book.verse, helpers, display, headingFont),
+            text,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 19.sp, lineHeight = 31.sp),
             color = Ink,
             textAlign = if (book.verse) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
+            onTextLayout = { layout = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    val l = layout ?: return@drawBehind
+                    text.getStringAnnotations(READING, 0, text.length).firstOrNull()?.let { drawReading(l, it.start, it.end) }
+                }
         )
         Text(
             "$FLEURON $FLEURON $FLEURON",
@@ -151,7 +183,7 @@ fun StoryPage(
             letterSpacing = 8.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
-        page.question?.let { QuestionBlock(page, it, answer, ko?.q, helpers.readsOut, onAnswer) }
+        if (!helpers.calm) page.question?.let { QuestionBlock(page, it, answer, ko?.q, helpers.readsOut, onAnswer) }
     }
 }
 
@@ -174,6 +206,9 @@ private fun pageText(
     sentences.forEachIndexed { i, sentence ->
         if (i > 0) append(if (lines != null || verse) "\n" else " ")
         val parts = gloss?.split(sentence) ?: listOf(sentence to -1)
+        val seg = i + 1
+        val reading = helpers.highlight == seg
+        val start = length
         parts.forEach { (text, entry) ->
             var shown = display.content(text)
             if (dropCap && shown.isNotEmpty()) {
@@ -183,13 +218,20 @@ private fun pageText(
                 shown = shown.substring(1)
                 dropCap = false
             }
-            if (entry >= 0) {
-                val style = SpanStyle(textDecoration = TextDecoration.Underline, color = GlossText)
-                withLink(LinkAnnotation.Clickable("gloss:$entry", TextLinkStyles(style)) { helpers.onGloss(entry) }) { append(shown) }
-            } else {
-                append(shown)
+            val say = helpers.onSay
+            when {
+                entry >= 0 -> {
+                    val style = SpanStyle(textDecoration = TextDecoration.Underline, color = GlossText)
+                    withLink(LinkAnnotation.Clickable("gloss:$entry", TextLinkStyles(style)) { helpers.onGloss(entry) }) { append(shown) }
+                }
+
+                // A tap on the sentence plays it (its glossary words keep their own tap).
+                say != null -> withLink(LinkAnnotation.Clickable("say:$seg") { say(seg) }) { append(shown) }
+
+                else -> append(shown)
             }
         }
+        if (reading) addStringAnnotation(READING, "", start, length)
         lines?.getOrNull(i)?.let { (line, korean) ->
             append("\n")
             val style = if (korean) {
@@ -199,6 +241,34 @@ private fun pageText(
             }
             withStyle(style) { append(line) }
         }
+    }
+}
+
+/** Marks the piece being read; its marker is drawn behind the text. */
+private const val READING = "reading"
+
+/**
+ * A marker behind [start] until [end], line by line, hugging the letters. The line
+ * boxes carry the extra line height above the text, so it is sized from the baseline.
+ */
+private fun DrawScope.drawReading(layout: TextLayoutResult, start: Int, end: Int) {
+    if (end <= start) return
+    val first = layout.getLineForOffset(start)
+    val last = layout.getLineForOffset(end - 1)
+    val pad = 3.dp.toPx()
+    val em = 19.sp.toPx()
+    for (line in first..last) {
+        val left = if (line == first) layout.getHorizontalPosition(start, true) else layout.getLineLeft(line)
+        val right = if (line == last) layout.getHorizontalPosition(end, true) else layout.getLineRight(line)
+        val baseline = layout.getLineBaseline(line)
+        val top = baseline - 1.05f * em
+        val bottom = baseline + 0.35f * em
+        drawRoundRect(
+            Reading,
+            topLeft = Offset(minOf(left, right) - pad, top),
+            size = Size(abs(right - left) + 2 * pad, bottom - top),
+            cornerRadius = CornerRadius(6.dp.toPx())
+        )
     }
 }
 

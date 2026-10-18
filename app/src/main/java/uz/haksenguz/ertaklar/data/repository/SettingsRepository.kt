@@ -12,6 +12,9 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore) {
 
     suspend fun setScript(script: String) = store.setScript(script)
 
+    /** The voice that reads books aloud, kept for next time. */
+    suspend fun setVoice(id: String?) = store.setVoice(id)
+
     /** The voice the studio records with, kept for next time. */
     suspend fun setRecVoice(id: String?) = store.setRecVoice(id)
 

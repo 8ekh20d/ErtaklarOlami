@@ -81,6 +81,11 @@ class ClipPlayer @Inject constructor(@ApplicationContext private val context: Co
         done(error)
     }
 
+    /** Jumps to [seconds] in the clip being played. */
+    fun seek(seconds: Double) {
+        player?.seekTo((seconds * 1000).toLong().coerceAtLeast(0))
+    }
+
     /** Stops without calling the end callback. */
     fun stop() {
         ticker?.cancel()

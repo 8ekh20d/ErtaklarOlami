@@ -80,6 +80,7 @@ import uz.haksenguz.ertaklar.ui.components.TagChip
 import uz.haksenguz.ertaklar.ui.components.ToastHost
 import uz.haksenguz.ertaklar.ui.components.parseHue
 import uz.haksenguz.ertaklar.ui.components.rememberToastState
+import uz.haksenguz.ertaklar.ui.screens.bedtime.BedtimeSheet
 import uz.haksenguz.ertaklar.ui.screens.profiles.ProfilesSheet
 import uz.haksenguz.ertaklar.ui.text.LocalDisplay
 import uz.haksenguz.ertaklar.ui.text.storyText
@@ -110,6 +111,7 @@ private val EveningGlow = Color(0xFFFDE68A)
 @Composable
 fun LibraryScreen(
     onOpenBook: (key: String, resume: Boolean) -> Unit,
+    onBedtime: (key: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
@@ -117,6 +119,7 @@ fun LibraryScreen(
     val display = LocalDisplay.current
     val toast = rememberToastState()
     var profilesOpen by rememberSaveable { mutableStateOf(false) }
+    var bedtimeOpen by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val later: () -> Unit = { toast.show(display.ui("Bu bo'lim tez orada qo'shiladi")) }
     val share: () -> Unit = {
@@ -161,7 +164,7 @@ fun LibraryScreen(
                         state = state,
                         showKorean = display.korean,
                         onHero = { state.hero?.let { onOpenBook(it.key, it.continueReading) } },
-                        onBedtime = later,
+                        onBedtime = { bedtimeOpen = true },
                         onDictionary = later,
                         onPassport = later,
                         onShare = share,
@@ -182,6 +185,15 @@ fun LibraryScreen(
     }
 
     if (profilesOpen) ProfilesSheet(onDismiss = { profilesOpen = false })
+    if (bedtimeOpen) {
+        BedtimeSheet(
+            onStart = { key ->
+                bedtimeOpen = false
+                onBedtime(key)
+            },
+            onDismiss = { bedtimeOpen = false }
+        )
+    }
 
     state.lockedTwinOf?.let { twin ->
         AlertDialog(

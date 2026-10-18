@@ -14,7 +14,10 @@ fun NavGraph() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = LibraryRoute) {
         composable<LibraryRoute> {
-            LibraryScreen(onOpenBook = { key, resume -> nav.navigate(ReaderRoute(key, resume)) })
+            LibraryScreen(
+                onOpenBook = { key, resume -> nav.navigate(ReaderRoute(key, resume)) },
+                onBedtime = { key -> nav.navigate(ReaderRoute(key, bedtime = true)) }
+            )
         }
         composable<ReaderRoute> {
             ReaderScreen(

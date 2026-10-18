@@ -117,6 +117,13 @@ object Narration {
         return marks.map(::round2)
     }
 
+    /**
+     * Whether a recording was read from the text now on the page: one mark per
+     * piece, and the same fingerprint. Otherwise it still plays, unlit.
+     */
+    fun fits(marks: List<Double>, clipSig: String, segments: List<String>): Boolean =
+        marks.size == segments.size && (clipSig.isEmpty() || clipSig == sig(segments))
+
     /** Index of the piece being read at time [t]. */
     fun segAt(marks: List<Double>, t: Double): Int {
         var i = 0

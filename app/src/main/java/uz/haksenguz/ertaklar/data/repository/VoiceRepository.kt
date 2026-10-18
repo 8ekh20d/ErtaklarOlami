@@ -14,6 +14,7 @@ import javax.inject.Singleton
 import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -46,6 +47,12 @@ class VoiceRepository @Inject constructor(
     fun pages(voiceId: String, book: String): Flow<Set<Int>> = dao.observePages(voiceId, book).map { it.toSet() }
 
     suspend fun voice(id: String): Voice? = dao.voice(id)?.toModel()
+
+    /** Voices that have read at least one page of [book], oldest first. */
+    fun voicesForBook(book: String): Flow<List<Voice>> = combine(voices, dao.observeClipsForBook(book)) { all, clips ->
+        val ids = clips.map { it.voiceId }.toSet()
+        all.filter { it.id in ids }
+    }
 
     suspend fun createVoice(name: String, avatar: String): Voice {
         val v = VoiceEntity(newId(), name.trim().ifEmpty { "Ovoz" }.take(24), avatar, System.currentTimeMillis())

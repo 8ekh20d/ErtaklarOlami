@@ -46,6 +46,13 @@ class ProgressRepository @Inject constructor(
         settled
     }
 
+    /** Bedtime ended before the book did: tomorrow it opens on [page]. */
+    suspend fun rememberPage(profileId: String, book: Book, page: Int) = mutex.withLock {
+        val current = load(profileId, book.key)
+        dao.upsert(current.copy(page = page.coerceIn(1, book.pages.size)).toEntity(profileId))
+        profileDao.setLastBook(profileId, book.key)
+    }
+
     /** Answer [idx] to story page [view]'s question; a right answer earns its points. */
     suspend fun answer(profileId: String, book: Book, view: Int, idx: Int): Reading.Outcome = mutex.withLock {
         val question = book.pages.getOrNull(view - 1)?.question ?: return Reading.Outcome.Ignored
