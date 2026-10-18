@@ -112,10 +112,12 @@ private val EveningGlow = Color(0xFFFDE68A)
 fun LibraryScreen(
     onOpenBook: (key: String, resume: Boolean) -> Unit,
     onBedtime: (key: String) -> Unit,
+    onDictionary: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val words by viewModel.words.collectAsStateWithLifecycle()
     val display = LocalDisplay.current
     val toast = rememberToastState()
     var profilesOpen by rememberSaveable { mutableStateOf(false) }
@@ -165,7 +167,8 @@ fun LibraryScreen(
                         showKorean = display.korean,
                         onHero = { state.hero?.let { onOpenBook(it.key, it.continueReading) } },
                         onBedtime = { bedtimeOpen = true },
-                        onDictionary = later,
+                        words = words,
+                        onDictionary = onDictionary,
                         onPassport = later,
                         onShare = share,
                         onCategory = viewModel::selectCategory,
@@ -211,6 +214,7 @@ private fun LazyGridScope.libraryContent(
     showKorean: Boolean,
     onHero: () -> Unit,
     onBedtime: () -> Unit,
+    words: Int,
     onDictionary: () -> Unit,
     onPassport: () -> Unit,
     onShare: () -> Unit,
@@ -221,7 +225,7 @@ private fun LazyGridScope.libraryContent(
     val full: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
     state.hero?.let { hero ->
         item(span = full, key = "hero") {
-            HeroBanner(hero, state.evening, onHero, onBedtime, onDictionary, onPassport, onShare)
+            HeroBanner(hero, state.evening, words, onHero, onBedtime, onDictionary, onPassport, onShare)
         }
     }
     item(span = full, key = "tabs") { CategoryTabs(state.tabs, state.category, onCategory) }
@@ -296,6 +300,7 @@ private fun Header(points: Int, avatar: String, choice: String, onChoice: (Strin
 private fun HeroBanner(
     hero: Hero,
     evening: Boolean,
+    words: Int,
     onOpen: () -> Unit,
     onBedtime: () -> Unit,
     onDictionary: () -> Unit,
@@ -375,7 +380,7 @@ private fun HeroBanner(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 BannerButton("🌙", "Uxlash vaqti", glow = evening, onClick = onBedtime)
-                BannerButton("📖", "Mening lug'atim", onClick = onDictionary)
+                BannerButton("📖", "Mening lug'atim", count = words, onClick = onDictionary)
                 BannerButton("🗺️", "Pasportim", onClick = onPassport)
                 BannerButton(null, "Ulashish", onClick = onShare)
             }
@@ -384,7 +389,7 @@ private fun HeroBanner(
 }
 
 @Composable
-private fun BannerButton(emoji: String?, label: String, glow: Boolean = false, onClick: () -> Unit) {
+private fun BannerButton(emoji: String?, label: String, glow: Boolean = false, count: Int? = null, onClick: () -> Unit) {
     Row(
         Modifier
             .height(40.dp)
@@ -403,7 +408,7 @@ private fun BannerButton(emoji: String?, label: String, glow: Boolean = false, o
         } else {
             Icon(Icons.Rounded.Share, null, tint = Color.White, modifier = Modifier.size(18.dp))
         }
-        Text(uiText(label), color = Color.White, style = MaterialTheme.typography.labelLarge)
+        Text(uiText(label) + (count?.let { " ($it)" } ?: ""), color = Color.White, style = MaterialTheme.typography.labelLarge)
     }
 }
 

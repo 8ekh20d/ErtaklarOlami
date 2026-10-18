@@ -5,9 +5,12 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object LibraryRoute
 
-/** A book; [resume] opens it straight at the child's last page; [bedtime] reads tonight's pages calmly. */
+/**
+ * A book; [resume] opens it straight at the child's last page; [bedtime] reads
+ * tonight's pages calmly; [page] opens it at that story page (a dictionary word's).
+ */
 @Serializable
-data class ReaderRoute(val key: String, val resume: Boolean = false, val bedtime: Boolean = false)
+data class ReaderRoute(val key: String, val resume: Boolean = false, val bedtime: Boolean = false, val page: Int = 0)
 
 /** A book's final quiz ("Bilimdon testi"). */
 @Serializable
@@ -32,3 +35,11 @@ data class CompareRoute(val key: String)
 /** "✍️ Harfni yozing": tracing the letter of Alifbo page [view]. */
 @Serializable
 data class TraceRoute(val key: String, val view: Int)
+
+/** "📖 Mening lug'atim": the words the child has collected. */
+@Serializable
+data object DictionaryRoute
+
+/** A game with the child's words: "listen", "match" or "spell". */
+@Serializable
+data class DictGameRoute(val game: String)

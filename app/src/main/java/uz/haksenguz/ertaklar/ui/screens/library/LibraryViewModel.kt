@@ -24,6 +24,7 @@ import uz.haksenguz.ertaklar.data.models.Book
 import uz.haksenguz.ertaklar.data.models.BookRecord
 import uz.haksenguz.ertaklar.data.models.Category
 import uz.haksenguz.ertaklar.data.models.Profile
+import uz.haksenguz.ertaklar.data.repository.DictionaryRepository
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
 import uz.haksenguz.ertaklar.data.repository.SettingsRepository
@@ -85,8 +86,12 @@ class LibraryViewModel @Inject constructor(
     private val content: ContentRepository,
     private val profiles: ProfileRepository,
     progress: ProgressRepository,
-    private val settings: SettingsRepository
+    private val settings: SettingsRepository,
+    dictionary: DictionaryRepository
 ) : ViewModel() {
+
+    /** How many words are in the child's dictionary ("Mening lug'atim (12)"). */
+    val words: StateFlow<Int> = dictionary.entries.map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     private val library = MutableStateFlow<Library?>(null)
     private val category = MutableStateFlow(Category.All)

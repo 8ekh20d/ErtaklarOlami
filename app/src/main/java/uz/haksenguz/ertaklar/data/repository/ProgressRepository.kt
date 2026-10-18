@@ -1,5 +1,6 @@
 package uz.haksenguz.ertaklar.data.repository
 
+import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -12,6 +13,7 @@ import uz.haksenguz.ertaklar.core.scoring.Scoring
 import uz.haksenguz.ertaklar.data.local.dao.ProfileDao
 import uz.haksenguz.ertaklar.data.local.dao.ProgressDao
 import uz.haksenguz.ertaklar.data.local.entities.BookRecordEntity
+import uz.haksenguz.ertaklar.data.local.entities.DictWinEntity
 import uz.haksenguz.ertaklar.data.local.entities.WordSeenEntity
 import uz.haksenguz.ertaklar.data.models.AnswerState
 import uz.haksenguz.ertaklar.data.models.Book
@@ -87,6 +89,20 @@ class ProgressRepository @Inject constructor(
     /** An Alifbo [letter] traced; its points come only the first time. */
     suspend fun traced(profileId: String, key: String, letter: String): Boolean =
         once(profileId, key, Scoring.TRACE, { letter in it.traced }) { it.copy(traced = it.traced + letter) }
+
+    /** The "book:page" keys of the word pages the child has opened. */
+    fun words(
+        profileId: String
+    ): Flow<Set<String>> = dao.observeWords(profileId).map { list -> list.map { "${it.book}:${it.page}" }.toSet() }
+
+    /** A dictionary game won; its points come once a day. Returns whether they came now. */
+    suspend fun winDictGame(profileId: String, game: String): Boolean = mutex.withLock {
+        val today = LocalDate.now().toString()
+        if (dao.dictWin(profileId, game)?.day == today) return false
+        dao.upsertDictWin(DictWinEntity(profileId, game, today))
+        profileDao.addPoints(profileId, Scoring.DICT)
+        true
+    }
 
     private suspend fun once(
         profileId: String,

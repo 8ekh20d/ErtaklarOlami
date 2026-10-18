@@ -37,6 +37,9 @@ interface ProgressDao {
     @Query("SELECT * FROM dict_wins WHERE profile_id = :profileId")
     fun observeDictWins(profileId: String): Flow<List<DictWinEntity>>
 
+    @Query("SELECT * FROM dict_wins WHERE profile_id = :profileId AND game = :game")
+    suspend fun dictWin(profileId: String, game: String): DictWinEntity?
+
     @Upsert
     suspend fun upsertDictWin(win: DictWinEntity)
 }

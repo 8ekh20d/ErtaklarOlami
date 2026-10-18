@@ -201,6 +201,7 @@ class ReaderViewModel @Inject constructor(
             val tonight = if (route.bedtime) Bedtime.tonight(record, book.pages.size, settings.settings.first().bedtimePages) else null
             val start = when {
                 tonight != null -> tonight.from
+                route.page in 1..book.pages.size -> route.page
                 route.resume && record.page >= 1 -> record.page
                 else -> Reading.COVER
             }
