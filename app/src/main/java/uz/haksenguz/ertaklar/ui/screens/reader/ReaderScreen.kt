@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -66,6 +68,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.reading.Reading
+import uz.haksenguz.ertaklar.ui.components.GrownUpsGateDialog
 import uz.haksenguz.ertaklar.ui.components.PointsChip
 import uz.haksenguz.ertaklar.ui.components.ToastHost
 import uz.haksenguz.ertaklar.ui.components.rememberToastState
@@ -94,6 +97,8 @@ private val TrackBg = Color(0xFFE5E7EB)
 private val GlossBorder = Color(0xFF6EE7B7)
 private val GlossTerm = Color(0xFF065F46)
 private val GlossSay = Color(0xFFD1FAE5)
+private val StudioBg = Color(0xFFFFF1F2)
+private val StudioText = Color(0xFFBE123C)
 
 /**
  * The book reader. Pages turn with a swipe or the buttons below:
@@ -104,6 +109,7 @@ fun ReaderScreen(
     onBack: () -> Unit,
     onOpenBook: (String) -> Unit,
     onOpenQuiz: (String) -> Unit,
+    onOpenStudio: (key: String, page: Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
@@ -111,15 +117,19 @@ fun ReaderScreen(
     val display = LocalDisplay.current
     val toast = rememberToastState()
     val openQuiz by rememberUpdatedState { state.book?.key?.let(onOpenQuiz) }
+    val openStudio by rememberUpdatedState { page: Int -> state.book?.key?.let { onOpenStudio(it, page) } }
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is ReaderEvent.Toast -> toast.show(display.ui(event.text))
                 ReaderEvent.OpenQuiz -> openQuiz()
+                is ReaderEvent.OpenStudio -> openStudio(event.page)
             }
         }
     }
     BackHandler(enabled = state.glossCard != null) { viewModel.closeGloss() }
+    val gateOpen by viewModel.gateOpen.collectAsStateWithLifecycle()
+    if (gateOpen) GrownUpsGateDialog(onPass = viewModel::gatePassed, onDismiss = { viewModel.gateOpen.value = false })
 
     Box(
         modifier
@@ -156,7 +166,7 @@ fun ReaderScreen(
             val view = pager.currentPage - 1
 
             Column(Modifier.fillMaxSize()) {
-                TopBar(view = view, pages = state.pages, points = state.points, onBack = onBack)
+                TopBar(view = view, pages = state.pages, points = state.points, onBack = onBack, onStudio = viewModel::openStudio)
                 HorizontalPager(
                     state = pager,
                     beyondViewportPageCount = 1,
@@ -272,7 +282,7 @@ private fun label(view: Int, pages: Int) = when {
 }
 
 @Composable
-private fun TopBar(view: Int, pages: Int, points: Int, onBack: () -> Unit) {
+private fun TopBar(view: Int, pages: Int, points: Int, onBack: () -> Unit, onStudio: () -> Unit) {
     Surface(color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
         Row(
             Modifier
@@ -282,10 +292,9 @@ private fun TopBar(view: Int, pages: Int, points: Int, onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Back to the library; on a phone only the arrow fits next to the progress.
             TextButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Gray700)
-                Spacer(Modifier.width(4.dp))
-                Text(uiText("Kutubxona"), color = Gray700, fontWeight = FontWeight.Bold)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Kutubxona"), tint = Gray700)
             }
             val progress = if (view > pages) 1f else (view.coerceAtLeast(0).toFloat() / pages).coerceIn(0f, 1f)
             Box(
@@ -313,6 +322,22 @@ private fun TopBar(view: Int, pages: Int, points: Int, onBack: () -> Unit) {
                     .background(Orange100)
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             )
+            // Ovoz yozish: for grown-ups (behind a small sum).
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(StudioBg)
+                    .clickable(onClickLabel = uiText("Ovoz yozish (kattalar uchun)"), onClick = onStudio),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Mic,
+                    contentDescription = uiText("Ovoz yozish (kattalar uchun)"),
+                    tint = StudioText,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             PointsChip(points)
         }
     }

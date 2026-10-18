@@ -12,3 +12,7 @@ data class ReaderRoute(val key: String, val resume: Boolean = false)
 /** A book's final quiz ("Bilimdon testi"). */
 @Serializable
 data class QuizRoute(val key: String)
+
+/** The recording studio for a book, opened at [page]. */
+@Serializable
+data class StudioRoute(val key: String, val page: Int = 1)

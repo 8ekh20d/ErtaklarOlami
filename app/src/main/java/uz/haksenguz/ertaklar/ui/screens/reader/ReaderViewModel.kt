@@ -27,6 +27,7 @@ import uz.haksenguz.ertaklar.data.content.ContentRepository
 import uz.haksenguz.ertaklar.data.models.Book
 import uz.haksenguz.ertaklar.data.models.BookRecord
 import uz.haksenguz.ertaklar.data.models.KoreanBook
+import uz.haksenguz.ertaklar.data.repository.GateRepository
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
 import uz.haksenguz.ertaklar.data.repository.SettingsRepository
@@ -66,6 +67,9 @@ data class ReaderUiState(
 sealed interface ReaderEvent {
     data class Toast(val text: String) : ReaderEvent
     data object OpenQuiz : ReaderEvent
+
+    /** The recording studio, at this story page. */
+    data class OpenStudio(val page: Int) : ReaderEvent
 }
 
 private data class Helpers(val koView: Int?, val reading: Boolean, val glossCard: Pair<String, String>?)
@@ -78,7 +82,8 @@ class ReaderViewModel @Inject constructor(
     private val profiles: ProfileRepository,
     private val progress: ProgressRepository,
     private val settings: SettingsRepository,
-    private val tts: KoreanTts
+    private val tts: KoreanTts,
+    private val gate: GateRepository
 ) : ViewModel() {
 
     private val route = savedState.toRoute<ReaderRoute>()
@@ -184,6 +189,26 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             if (!tts.speak(meaning)) events.send(ReaderEvent.Toast("Bu qurilmada koreyscha ovoz topilmadi"))
         }
+    }
+
+    /** Set while the grown-ups gate is up. */
+    val gateOpen = MutableStateFlow(false)
+
+    /** Ovoz yozish: for grown-ups, behind a small sum. */
+    fun openStudio() {
+        if (gate.isOpen) studioAt() else gateOpen.value = true
+    }
+
+    fun gatePassed() {
+        gate.open()
+        gateOpen.value = false
+        studioAt()
+    }
+
+    private fun studioAt() {
+        val pages = opened.value?.book?.pages?.size ?: return
+        tts.stop()
+        viewModelScope.launch { events.send(ReaderEvent.OpenStudio(view.coerceIn(1, pages))) }
     }
 
     fun openQuiz() {

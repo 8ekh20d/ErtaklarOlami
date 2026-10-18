@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import uz.haksenguz.ertaklar.ui.screens.library.LibraryScreen
 import uz.haksenguz.ertaklar.ui.screens.quiz.QuizScreen
 import uz.haksenguz.ertaklar.ui.screens.reader.ReaderScreen
+import uz.haksenguz.ertaklar.ui.screens.studio.StudioScreen
 
 @Composable
 fun NavGraph() {
@@ -20,8 +21,12 @@ fun NavGraph() {
                 onBack = { nav.popBackStack() },
                 // A twin tale opens in place of the one just finished.
                 onOpenBook = { key -> nav.navigate(ReaderRoute(key)) { popUpTo<ReaderRoute> { inclusive = true } } },
-                onOpenQuiz = { key -> nav.navigate(QuizRoute(key)) }
+                onOpenQuiz = { key -> nav.navigate(QuizRoute(key)) },
+                onOpenStudio = { key, page -> nav.navigate(StudioRoute(key, page)) }
             )
+        }
+        composable<StudioRoute> {
+            StudioScreen(onBack = { nav.popBackStack() })
         }
         composable<QuizRoute> {
             QuizScreen(

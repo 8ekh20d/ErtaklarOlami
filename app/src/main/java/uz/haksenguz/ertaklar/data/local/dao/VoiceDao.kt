@@ -12,6 +12,12 @@ interface VoiceDao {
     @Query("SELECT * FROM voices ORDER BY created")
     fun observeVoices(): Flow<List<VoiceEntity>>
 
+    @Query("SELECT * FROM voices ORDER BY created")
+    suspend fun voices(): List<VoiceEntity>
+
+    @Query("SELECT * FROM voices WHERE id = :id")
+    suspend fun voice(id: String): VoiceEntity?
+
     @Upsert
     suspend fun upsertVoice(voice: VoiceEntity)
 
@@ -20,6 +26,12 @@ interface VoiceDao {
 
     @Query("SELECT * FROM clips WHERE book = :book")
     fun observeClipsForBook(book: String): Flow<List<ClipEntity>>
+
+    @Query("SELECT page FROM clips WHERE voice_id = :voiceId AND book = :book ORDER BY page")
+    fun observePages(voiceId: String, book: String): Flow<List<Int>>
+
+    @Query("SELECT * FROM clips WHERE voice_id = :voiceId ORDER BY book, page")
+    suspend fun clipsOfVoice(voiceId: String): List<ClipEntity>
 
     @Query("SELECT * FROM clips WHERE voice_id = :voiceId AND book = :book AND page = :page")
     suspend fun clip(voiceId: String, book: String, page: Int): ClipEntity?

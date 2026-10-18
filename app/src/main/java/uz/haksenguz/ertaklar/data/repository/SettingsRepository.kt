@@ -12,6 +12,9 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore) {
 
     suspend fun setScript(script: String) = store.setScript(script)
 
+    /** The voice the studio records with, kept for next time. */
+    suspend fun setRecVoice(id: String?) = store.setRecVoice(id)
+
     /** "lat", "cyr" or "ko": Uzbek in Latin or Cyrillic, or the menus in Korean (Uzbek then in Latin). */
     suspend fun setChoice(choice: String) = store.setScriptAndLang(
         script = if (choice == "cyr") "cyr" else "lat",

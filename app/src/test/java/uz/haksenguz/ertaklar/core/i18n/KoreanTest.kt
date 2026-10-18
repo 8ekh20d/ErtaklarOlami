@@ -24,7 +24,7 @@ class KoreanTest {
 
     @Test
     fun everyPatternTranslatesItsExample() {
-        val handled = setOf("monthDay")
+        val handled = setOf("monthDay", "voicePackImported")
         val wrong = i18n.patterns.filter { it.ko != null || it.fn in handled }.mapNotNull { p ->
             menus.translate(p.example).takeIf { it != p.exampleKo }?.let { "${p.example} -> $it (want ${p.exampleKo})" }
         }

@@ -34,6 +34,10 @@ class KoreanMenus(
         // "🎉 9-oktabr" -> "🎉 10월 9일"
         "monthDay" -> MONTHS.indexOf(g[2]).takeIf { it >= 0 }?.let { "🎉 ${it + 1}월 ${g[1]}일" }
 
+        // "✓ 👵 Buvijon: 12 ta sahifa qo'shildi." (and a warning when the phone may not play them)
+        "voicePackImported" -> "✓ ${g[1]}: ${g[2]}쪽을 추가했어요." +
+            if (g.getOrElse(3) { "" }.isNotEmpty()) " 주의: 이 휴대폰에서는 이 녹음이 재생되지 않을 수도 있어요." else ""
+
         else -> null
     }
 
@@ -49,6 +53,7 @@ class KoreanMenus(
             "Tushunarli" to "알겠어요",
             "Ertaklar Olami — o'zbek ertaklari, rasmli va o'qib beriladigan kitoblar." to "Ertaklar Olami — 그림과 함께 읽어 주는 우즈베크 동화책",
             "Ha, o'chirish" to "네, 삭제할게요",
+            "Ha" to "네",
             "Bilimdon testi" to "퀴즈"
         )
     }
