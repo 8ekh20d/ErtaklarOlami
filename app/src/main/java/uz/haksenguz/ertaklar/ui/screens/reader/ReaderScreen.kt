@@ -12,6 +12,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -53,10 +54,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -81,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.reading.Bedtime
@@ -89,11 +93,14 @@ import uz.haksenguz.ertaklar.data.models.Voice
 import uz.haksenguz.ertaklar.ui.components.GrownUpsGateDialog
 import uz.haksenguz.ertaklar.ui.components.PointsChip
 import uz.haksenguz.ertaklar.ui.components.ToastHost
+import uz.haksenguz.ertaklar.ui.components.parseHue
 import uz.haksenguz.ertaklar.ui.components.rememberToastState
 import uz.haksenguz.ertaklar.ui.screens.goodnight.GoodnightScreen
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.CoverPage
+import uz.haksenguz.ertaklar.ui.screens.reader.pages.EndpaperPage
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.FinaleActions
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.FinalePage
+import uz.haksenguz.ertaklar.ui.screens.reader.pages.PageHalf
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.PageHelpers
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.StoryPage
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.TitlePage
@@ -175,63 +182,150 @@ fun ReaderScreen(
         if (state.loading || book == null) {
             CircularProgressIndicator(color = Brand500, modifier = Modifier.align(Alignment.Center))
         } else {
-            // Pager page i shows view i - 1: the cover is page 0.
-            // At bedtime the pages stop at tonight's last one.
-            val pager = rememberPagerState(initialPage = state.startView + 1) { state.reachable + 2 }
-            LaunchedEffect(turnTo) {
-                turnTo?.let { pager.animateScrollToPage((it + 1).coerceIn(0, pager.pageCount - 1)) }
-                turnTo = null
-            }
-            LaunchedEffect(pager) {
-                snapshotFlow { pager.settledPage }.distinctUntilChanged().collect { viewModel.onPageSettled(it - 1) }
-            }
-            // A page swishes as it starts to turn; the cover (page 0) is heavier.
-            LaunchedEffect(pager) {
-                var from = pager.currentPage
-                snapshotFlow { pager.targetPage }.distinctUntilChanged().collect { to ->
-                    if (to != from) viewModel.turning(cover = from == 0 || to == 0)
-                    from = to
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                // A tablet shows the book lying open, two pages at a time; a phone, one sheet to swipe.
+                val wide = maxWidth >= 768.dp && maxHeight >= 520.dp
+                // Where the book is open, kept across a turn of the screen.
+                var openAt by rememberSaveable { mutableIntStateOf(state.startView) }
+                // Pager page i shows view i - 1: the cover is page 0.
+                // At bedtime the pages stop at tonight's last one.
+                val pager = rememberPagerState(initialPage = openAt + 1) { state.reachable + 2 }
+                val spread = remember { SpreadState(openAt) }
+                spread.last = state.reachable
+                spread.onTurnStart = { cover -> viewModel.turning(cover) }
+                // On a change of layout the book first opens where it was, then follows the child's turning.
+                LaunchedEffect(wide) {
+                    if (wide) {
+                        spread.jump(openAt)
+                        snapshotFlow { spread.view }.distinctUntilChanged().collect {
+                            openAt = it
+                            viewModel.onPageSettled(it)
+                        }
+                    } else {
+                        pager.scrollToPage((openAt + 1).coerceIn(0, pager.pageCount - 1))
+                        coroutineScope {
+                            launch {
+                                snapshotFlow { pager.settledPage }.distinctUntilChanged().collect {
+                                    openAt = it - 1
+                                    viewModel.onPageSettled(it - 1)
+                                }
+                            }
+                            // A page swishes as it starts to turn; the cover (page 0) is heavier.
+                            launch {
+                                var from = pager.currentPage
+                                snapshotFlow { pager.targetPage }.distinctUntilChanged().collect { to ->
+                                    if (to != from) viewModel.turning(cover = from == 0 || to == 0)
+                                    from = to
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-            val scope = rememberCoroutineScope()
-            val goTo: (Int) -> Unit = { view -> scope.launch { pager.animateScrollToPage(view + 1) } }
-            val context = LocalContext.current
-            val share = {
-                val send = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, display.ui("«${book.title}» — o'zbek ertagi: rasmli, varaqlanadigan kitob"))
+                LaunchedEffect(turnTo) {
+                    turnTo?.let {
+                        if (wide) spread.turnTo(it) else pager.animateScrollToPage((it + 1).coerceIn(0, pager.pageCount - 1))
+                    }
+                    turnTo = null
                 }
-                context.startActivity(Intent.createChooser(send, display.ui("Ulashish")))
-            }
-            val actions = FinaleActions(
-                onTwin = { state.twin?.let { onOpenBook(it.first) } },
-                onCompare = viewModel::openCompare,
-                onQuiz = viewModel::openQuiz,
-                onOrder = viewModel::openOrder,
-                onRestart = { goTo(1) },
-                onShare = share,
-                onColor = { viewModel.openColoring(state.lastView) }.takeUnless { state.calm },
-                onPassport = viewModel::openPassport,
-                onPoke = viewModel::poke
-            )
-            val view = pager.currentPage - 1
-
-            Column(Modifier.fillMaxSize()) {
-                TopBar(
-                    view = view,
-                    pages = state.pages,
-                    points = state.points,
-                    onBack = onBack,
-                    onStudio = viewModel::openStudio,
-                    sound = state.sound,
-                    onSound = viewModel::toggleSound,
-                    bedtime = state.tonight?.let { Bedtime.progress(view, it) },
-                    modifier = Modifier.alpha(if (state.calm) 0.62f else 1f)
+                val scope = rememberCoroutineScope()
+                val goTo: (Int) -> Unit = { view ->
+                    scope.launch { if (wide) spread.turnTo(view) else pager.animateScrollToPage(view + 1) }
+                }
+                val context = LocalContext.current
+                val share = {
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        val text = "«${book.title}» — o'zbek ertagi: rasmli, varaqlanadigan kitob"
+                        putExtra(Intent.EXTRA_TEXT, display.ui(text))
+                    }
+                    context.startActivity(Intent.createChooser(send, display.ui("Ulashish")))
+                }
+                val actions = FinaleActions(
+                    onTwin = { state.twin?.let { onOpenBook(it.first) } },
+                    onCompare = viewModel::openCompare,
+                    onQuiz = viewModel::openQuiz,
+                    onOrder = viewModel::openOrder,
+                    onRestart = { goTo(1) },
+                    onShare = share,
+                    onColor = { viewModel.openColoring(state.lastView) }.takeUnless { state.calm },
+                    onPassport = viewModel::openPassport,
+                    onPoke = viewModel::poke
                 )
-                HorizontalPager(
-                    state = pager,
-                    beyondViewportPageCount = 1,
-                    modifier = Modifier
+                val view = if (wide) spread.view else pager.currentPage - 1
+                // The page at rest, whose sentence is lit up while it is read aloud.
+                val settled = if (wide) spread.view.takeIf { spread.turn == null } else pager.settledPage - 1
+
+                Column(Modifier.fillMaxSize()) {
+                    TopBar(
+                        view = view,
+                        pages = state.pages,
+                        points = state.points,
+                        onBack = onBack,
+                        onStudio = viewModel::openStudio,
+                        sound = state.sound,
+                        onSound = viewModel::toggleSound,
+                        bedtime = state.tonight?.let { Bedtime.progress(view, it) },
+                        modifier = Modifier.alpha(if (state.calm) 0.62f else 1f)
+                    )
+                    // One view's page, or one side of it on a tablet.
+                    val page: @Composable (Int, PageHalf) -> Unit = { shown, half ->
+                        when (shown) {
+                            Reading.COVER -> CoverPage(book, onOpen = { goTo(Reading.TITLE) }, inBook = half != PageHalf.BOTH)
+
+                            Reading.TITLE -> if (half == PageHalf.LEFT) {
+                                EndpaperPage(book)
+                            } else {
+                                TitlePage(
+                                    book,
+                                    state.resumePage,
+                                    onResume = { goTo(state.resumePage) },
+                                    onPoke = viewModel::poke,
+                                    half = half
+                                )
+                            }
+
+                            state.lastView -> FinalePage(
+                                book = book,
+                                score = state.score!!,
+                                twinTitle = state.twin?.second,
+                                actions = actions,
+                                koMoral = state.korean?.moral?.takeIf { it.isNotEmpty() },
+                                koShown = state.koView == shown,
+                                onToggleKorean = { viewModel.toggleKorean(shown) },
+                                place = state.place,
+                                half = half
+                            )
+
+                            else -> {
+                                val koShown = state.koView == shown
+                                StoryPage(
+                                    book = book,
+                                    view = shown,
+                                    answer = state.record.answers[shown.toString()],
+                                    helpers = PageHelpers(
+                                        korean = state.korean,
+                                        gloss = state.gloss,
+                                        koShown = koShown,
+                                        readsOut = state.reading && !koShown,
+                                        hasKorean = state.hasKorean(shown),
+                                        reading = state.reading,
+                                        onToggleKorean = { viewModel.toggleKorean(shown) },
+                                        onToggleReading = viewModel::toggleReading,
+                                        onGloss = viewModel::openGloss,
+                                        onSay = if (state.voices.isNotEmpty()) viewModel::say else null,
+                                        highlight = if (settled == shown) state.readAlong.highlight else -1,
+                                        calm = state.calm,
+                                        onColor = { viewModel.openColoring(shown) }.takeUnless { state.calm },
+                                        onTrace = { viewModel.openTrace(shown) },
+                                        onPoke = viewModel::poke
+                                    ),
+                                    onAnswer = { idx -> viewModel.answer(shown, idx) },
+                                    half = half
+                                )
+                            }
+                        }
+                    }
+                    val bookModifier = Modifier
                         .weight(1f)
                         // Bedtime: the book warm, as under a night lamp.
                         .then(
@@ -243,71 +337,33 @@ fun ReaderScreen(
                             } else {
                                 Modifier
                             }
-                        ),
-                    key = { it }
-                ) { index ->
-                    when (val shown = index - 1) {
-                        Reading.COVER -> CoverPage(book, onOpen = { goTo(Reading.TITLE) })
-
-                        Reading.TITLE -> TitlePage(book, state.resumePage, onResume = { goTo(state.resumePage) }, onPoke = viewModel::poke)
-
-                        state.lastView -> FinalePage(
-                            book = book,
-                            score = state.score!!,
-                            twinTitle = state.twin?.second,
-                            actions = actions,
-                            koMoral = state.korean?.moral?.takeIf { it.isNotEmpty() },
-                            koShown = state.koView == shown,
-                            onToggleKorean = { viewModel.toggleKorean(shown) },
-                            place = state.place
                         )
-
-                        else -> {
-                            val koShown = state.koView == shown
-                            StoryPage(
-                                book = book,
-                                view = shown,
-                                answer = state.record.answers[shown.toString()],
-                                helpers = PageHelpers(
-                                    korean = state.korean,
-                                    gloss = state.gloss,
-                                    koShown = koShown,
-                                    readsOut = state.reading && !koShown,
-                                    hasKorean = state.hasKorean(shown),
-                                    reading = state.reading,
-                                    onToggleKorean = { viewModel.toggleKorean(shown) },
-                                    onToggleReading = viewModel::toggleReading,
-                                    onGloss = viewModel::openGloss,
-                                    onSay = if (state.voices.isNotEmpty()) viewModel::say else null,
-                                    highlight = if (pager.settledPage - 1 == shown) state.readAlong.highlight else -1,
-                                    calm = state.calm,
-                                    onColor = { viewModel.openColoring(shown) }.takeUnless { state.calm },
-                                    onTrace = { viewModel.openTrace(shown) },
-                                    onPoke = viewModel::poke
-                                ),
-                                onAnswer = { idx -> viewModel.answer(shown, idx) }
-                            )
+                    if (wide) {
+                        SpreadBook(spread, board = parseHue(book.hue), page = page, modifier = bookModifier)
+                    } else {
+                        HorizontalPager(state = pager, beyondViewportPageCount = 1, modifier = bookModifier, key = { it }) { index ->
+                            page(index - 1, PageHalf.BOTH)
                         }
                     }
+                    BottomBar(
+                        view = view,
+                        pages = state.pages,
+                        listen = state.voices.isNotEmpty(),
+                        listening = state.readAlong.on,
+                        voice = state.voice?.takeIf { state.voices.size > 1 },
+                        onListen = viewModel::toggleListen,
+                        onVoice = viewModel::nextVoice,
+                        onPrev = { goTo(view - 1) },
+                        onNext = {
+                            when {
+                                view == state.lastView -> viewModel.openQuiz()
+                                state.calm -> viewModel.next()
+                                else -> goTo(view + 1)
+                            }
+                        },
+                        modifier = Modifier.alpha(if (state.calm) 0.62f else 1f)
+                    )
                 }
-                BottomBar(
-                    view = view,
-                    pages = state.pages,
-                    listen = state.voices.isNotEmpty(),
-                    listening = state.readAlong.on,
-                    voice = state.voice?.takeIf { state.voices.size > 1 },
-                    onListen = viewModel::toggleListen,
-                    onVoice = viewModel::nextVoice,
-                    onPrev = { goTo(view - 1) },
-                    onNext = {
-                        when {
-                            view == state.lastView -> viewModel.openQuiz()
-                            state.calm -> viewModel.next()
-                            else -> goTo(view + 1)
-                        }
-                    },
-                    modifier = Modifier.alpha(if (state.calm) 0.62f else 1f)
-                )
             }
         }
         AnimatedVisibility(

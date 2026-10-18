@@ -94,146 +94,143 @@ fun FinalePage(
     koShown: Boolean = false,
     onToggleKorean: () -> Unit = {},
     /** The passport place this book takes the child to. */
-    place: Region? = null
+    place: Region? = null,
+    /** On a tablet: just the picture side, or just the moral and buttons. */
+    half: PageHalf = PageHalf.BOTH
 ) {
-    BookSheet(modifier) {
-        Box {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                PageHead(chip = null, running = storyText(book.title), chipFirst = false)
-                PageArt(
-                    book.endImage,
-                    contentDescription = uiText("Tamom!"),
-                    onColor = actions.onColor,
-                    colorAt = Alignment.BottomEnd,
-                    onPoke = actions.onPoke
-                ) {
-                    Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.TopCenter) {
-                        Text(
-                            uiText("Tamom!"),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
-                            color = Color.White,
-                            modifier = Modifier
-                                .rotate(-3f)
-                                .shadow(8.dp, CircleShape)
-                                .clip(CircleShape)
-                                .background(Brush.linearGradient(listOf(TamomFrom, TamomTo)))
-                                .padding(horizontal = 22.dp, vertical = 4.dp)
-                        )
+    BookSheet(modifier, half) {
+        if (half == PageHalf.RIGHT) {
+            // The stamp in the corner of the page with the moral.
+            place?.let { Box(Modifier.fillMaxWidth()) { PlaceStamp(it, actions.onPassport, Modifier.align(Alignment.TopEnd)) } }
+        }
+        if (half != PageHalf.RIGHT) {
+            Box {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    PageHead(chip = null, running = storyText(book.title), chipFirst = false)
+                    PageArt(
+                        book.endImage,
+                        contentDescription = uiText("Tamom!"),
+                        onColor = actions.onColor,
+                        colorAt = Alignment.BottomEnd,
+                        onPoke = actions.onPoke
+                    ) {
+                        Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.TopCenter) {
+                            Text(
+                                uiText("Tamom!"),
+                                style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
+                                color = Color.White,
+                                modifier = Modifier
+                                    .rotate(-3f)
+                                    .shadow(8.dp, CircleShape)
+                                    .clip(CircleShape)
+                                    .background(Brush.linearGradient(listOf(TamomFrom, TamomTo)))
+                                    .padding(horizontal = 22.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
-            }
-            // The place this book took the child to, stamped in the page's corner.
-            place?.let { r ->
-                val where = uiText("📍 Bu ertak seni ${Passport.dative(r.name)} olib bordi!")
-                Column(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 2.dp)
-                        .rotate(5f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .semantics { contentDescription = where }
-                        .clickable(role = Role.Button, onClick = actions.onPassport),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    StampImage(r, Modifier.size(86.dp))
-                    Text(
-                        uiText("🗺️ Pasport"),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = PassportText,
-                        modifier = Modifier
-                            .offset(y = (-4).dp)
-                            .clip(CircleShape)
-                            .background(PassportBg)
-                            .padding(horizontal = 8.dp, vertical = 1.dp)
-                    )
-                }
+                // The place this book took the child to, stamped in the page's corner.
+                if (half == PageHalf.BOTH) place?.let { PlaceStamp(it, actions.onPassport, Modifier.align(Alignment.TopEnd)) }
             }
         }
-        Text(
-            uiText("✨ Ertak shu yerda tugadi ✨"),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = ArtHint,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Column(
-            Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(FLEURON, color = Gold, fontSize = 26.sp)
-            Text(uiText("Ertak tugadi!"), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp), color = Rust)
+        if (half != PageHalf.RIGHT) {
             Text(
-                buildAnnotatedString {
-                    withStyle(TextStyle(color = Amber500).toSpanStyle()) { append("★".repeat(score.stars)) }
-                    withStyle(TextStyle(color = Gray300).toSpanStyle()) { append("★".repeat(3 - score.stars)) }
-                },
-                fontSize = 40.sp,
-                letterSpacing = 6.sp,
-                style = TextStyle(shadow = Shadow(Brand700, androidx.compose.ui.geometry.Offset(0f, 6f), 0f))
+                uiText("✨ Ertak shu yerda tugadi ✨"),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = ArtHint,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
-            Text(
-                uiText(if (score.asked > 0) "Savollarga javoblar: ${score.right} / ${score.asked}" else "Ajoyib o'qidingiz!"),
-                style = MaterialTheme.typography.labelLarge,
-                color = InkSoft
-            )
+        }
+        if (half != PageHalf.LEFT) {
             Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(WordCardTo)
-                    .border(2.dp, GoldSoft, RoundedCornerShape(16.dp))
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        uiText("Ertakdan saboq:"),
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Rust,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    if (koMoral != null) KoreanToggle(koShown, onToggleKorean)
-                }
-                Text(
-                    storyText(book.moral.ifEmpty { "Yaxshilik va ezgulik har doim g'alaba qiladi." }),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Ink
-                )
-                if (koShown && koMoral != null) KoLine(koMoral)
-            }
-            when {
-                twinTitle != null -> WideButton(
-                    "${uiText("🇰🇷 Egizak ertak ochildi!")} «${storyText(twinTitle)}»",
-                    FairySky,
-                    onClick = actions.onTwin
-                )
-
-                book.compare != null -> WideButton(uiText("🔍 Farqlarni toping"), FairySky, onClick = actions.onCompare)
-            }
-            FlowRow(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                ActionButton(uiText("🏆 Bilimdon testi"), Brush.linearGradient(listOf(Amber500, TamomTo)), Color.White, actions.onQuiz)
-                if (book.order) {
+                Text(FLEURON, color = Gold, fontSize = 26.sp)
+                Text(uiText("Ertak tugadi!"), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp), color = Rust)
+                Text(
+                    buildAnnotatedString {
+                        withStyle(TextStyle(color = Amber500).toSpanStyle()) { append("★".repeat(score.stars)) }
+                        withStyle(TextStyle(color = Gray300).toSpanStyle()) { append("★".repeat(3 - score.stars)) }
+                    },
+                    fontSize = 40.sp,
+                    letterSpacing = 6.sp,
+                    style = TextStyle(shadow = Shadow(Brand700, androidx.compose.ui.geometry.Offset(0f, 6f), 0f))
+                )
+                Text(
+                    uiText(if (score.asked > 0) "Savollarga javoblar: ${score.right} / ${score.asked}" else "Ajoyib o'qidingiz!"),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = InkSoft
+                )
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(WordCardTo)
+                        .border(2.dp, GoldSoft, RoundedCornerShape(16.dp))
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            uiText("Ertakdan saboq:"),
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Rust,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        if (koMoral != null) KoreanToggle(koShown, onToggleKorean)
+                    }
+                    Text(
+                        storyText(book.moral.ifEmpty { "Yaxshilik va ezgulik har doim g'alaba qiladi." }),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Ink
+                    )
+                    if (koShown && koMoral != null) KoLine(koMoral)
+                }
+                when {
+                    twinTitle != null -> WideButton(
+                        "${uiText("🇰🇷 Egizak ertak ochildi!")} «${storyText(twinTitle)}»",
+                        FairySky,
+                        onClick = actions.onTwin
+                    )
+
+                    book.compare != null -> WideButton(uiText("🔍 Farqlarni toping"), FairySky, onClick = actions.onCompare)
+                }
+                FlowRow(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     ActionButton(
-                        uiText("🧩 Voqealar tartibi"),
-                        Brush.linearGradient(listOf(FairyPurple, FairyPurple)),
+                        uiText("🏆 Bilimdon testi"),
+                        Brush.linearGradient(listOf(Amber500, TamomTo)),
                         Color.White,
-                        actions.onOrder
+                        actions.onQuiz
+                    )
+                    if (book.order) {
+                        ActionButton(
+                            uiText("🧩 Voqealar tartibi"),
+                            Brush.linearGradient(listOf(FairyPurple, FairyPurple)),
+                            Color.White,
+                            actions.onOrder
+                        )
+                    }
+                    ActionButton(
+                        uiText("↺ Boshidan o'qish"),
+                        Brush.linearGradient(listOf(ChapterChipBg, ChapterChipBg)),
+                        ChoiceText,
+                        actions.onRestart
+                    )
+                    ActionButton(
+                        uiText("📤 Ulashish"),
+                        Brush.linearGradient(listOf(ChapterChipBg, ChapterChipBg)),
+                        ChoiceText,
+                        actions.onShare
                     )
                 }
-                ActionButton(
-                    uiText("↺ Boshidan o'qish"),
-                    Brush.linearGradient(listOf(ChapterChipBg, ChapterChipBg)),
-                    ChoiceText,
-                    actions.onRestart
-                )
-                ActionButton(uiText("📤 Ulashish"), Brush.linearGradient(listOf(ChapterChipBg, ChapterChipBg)), ChoiceText, actions.onShare)
             }
         }
     }
@@ -270,4 +267,32 @@ private fun ActionButton(text: String, background: Brush, color: Color, onClick:
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 13.dp)
     )
+}
+
+/** The place's stamp with a "🗺️ Pasport" tag, opening the passport there. */
+@Composable
+private fun PlaceStamp(r: Region, onPassport: () -> Unit, modifier: Modifier = Modifier) {
+    val where = uiText("📍 Bu ertak seni ${Passport.dative(r.name)} olib bordi!")
+    Column(
+        modifier
+            .padding(top = 2.dp)
+            .rotate(5f)
+            .clip(RoundedCornerShape(16.dp))
+            .semantics { contentDescription = where }
+            .clickable(role = Role.Button, onClick = onPassport),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        StampImage(r, Modifier.size(86.dp))
+        Text(
+            uiText("🗺️ Pasport"),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = PassportText,
+            modifier = Modifier
+                .offset(y = (-4).dp)
+                .clip(CircleShape)
+                .background(PassportBg)
+                .padding(horizontal = 8.dp, vertical = 1.dp)
+        )
+    }
 }

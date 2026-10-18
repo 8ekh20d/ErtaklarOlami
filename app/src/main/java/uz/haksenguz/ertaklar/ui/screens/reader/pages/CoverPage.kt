@@ -40,14 +40,20 @@ import uz.haksenguz.ertaklar.ui.theme.GoldSoft
 
 /** The closed book: a cloth cover in the book's colour; tapping it opens the book. */
 @Composable
-fun CoverPage(book: Book, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun CoverPage(
+    book: Book,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** On a tablet the cover is the book's front board itself, edge to edge. */
+    inBook: Boolean = false
+) {
     val hue = parseHue(book.hue)
-    val shape = RoundedCornerShape(10.dp, 22.dp, 22.dp, 10.dp)
+    val shape = if (inBook) RoundedCornerShape(4.dp, 16.dp, 16.dp, 4.dp) else RoundedCornerShape(10.dp, 22.dp, 22.dp, 10.dp)
     Box(
         modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-            .shadow(14.dp, shape)
+            .padding(horizontal = if (inBook) 0.dp else 20.dp, vertical = if (inBook) 0.dp else 12.dp)
+            .shadow(if (inBook) 0.dp else 14.dp, shape)
             .clip(shape)
             .background(hue)
             .clothTexture()

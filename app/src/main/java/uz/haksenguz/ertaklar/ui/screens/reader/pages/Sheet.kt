@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,28 +47,64 @@ import uz.haksenguz.ertaklar.ui.theme.Paper2
 /** The book's ornament, U+2766 with the text-style selector U+FE0E, so it draws as text, not as a colour emoji. */
 val FLEURON: String = String(intArrayOf(0x2766, 0xFE0E), 0, 2)
 
+/**
+ * Which part of an open book a page shows: on a phone both halves stack on
+ * one sheet; on a tablet the book lies open and each half has its own side.
+ */
+enum class PageHalf { BOTH, LEFT, RIGHT }
+
 /** A sheet of paper: one page of the book, scrolling when its text is long. */
 @Composable
-fun BookSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
+fun BookSheet(modifier: Modifier = Modifier, half: PageHalf = PageHalf.BOTH, content: @Composable ColumnScope.() -> Unit) {
+    if (half == PageHalf.BOTH) {
+        val shape = RoundedCornerShape(20.dp)
+        Box(
+            modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .shadow(6.dp, shape)
+                .clip(shape)
+                .background(Brush.verticalGradient(listOf(Paper, Paper2)))
+        ) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                content = content
+            )
+        }
+        return
+    }
+    // One side of the open book: square at the spine, which the paper darkens towards.
+    val left = half == PageHalf.LEFT
     Box(
         modifier
             .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .shadow(6.dp, shape)
-            .clip(shape)
+            .clip(if (left) RoundedCornerShape(6.dp, 0.dp, 0.dp, 6.dp) else RoundedCornerShape(0.dp, 6.dp, 6.dp, 0.dp))
             .background(Brush.verticalGradient(listOf(Paper, Paper2)))
     ) {
         Column(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(start = if (left) 30.dp else 34.dp, end = if (left) 34.dp else 30.dp, top = 22.dp, bottom = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content
+        )
+        Box(
+            Modifier
+                .align(if (left) Alignment.CenterEnd else Alignment.CenterStart)
+                .fillMaxHeight()
+                .width(44.dp)
+                .background(Brush.horizontalGradient(if (left) listOf(Color.Transparent, Gutter) else listOf(Gutter, Color.Transparent)))
         )
     }
 }
+
+/** The paper's shade at the spine. */
+private val Gutter = Color(0x385A3C14)
 
 /** The line at the top of a page: a chip on one side, the running head on the other. */
 @Composable

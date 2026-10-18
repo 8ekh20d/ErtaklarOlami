@@ -134,14 +134,24 @@ fun StoryPage(
     answer: AnswerState?,
     helpers: PageHelpers,
     onAnswer: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** On a tablet: just the picture side, or just the text side. */
+    half: PageHalf = PageHalf.BOTH
 ) {
     val page = book.pages[view - 1]
     val solved = answer?.done == true
     val ko: KoreanPage? = if (helpers.koShown) helpers.korean?.pages?.getOrNull(view - 1) else null
-    val display = LocalDisplay.current
-    val headingFont = HeadingFont
-    BookSheet(modifier) {
+    BookSheet(modifier, half) {
+        if (half != PageHalf.RIGHT) StoryPicture(book, view, page, solved, helpers, ko != null)
+        if (half == PageHalf.BOTH) HorizontalDivider(color = ArtRing.copy(alpha = 0.6f))
+        if (half != PageHalf.LEFT) StoryText(book, view, page, answer, helpers, ko, onAnswer)
+    }
+}
+
+/** The picture side: the page's number, its picture and its note. */
+@Composable
+private fun StoryPicture(book: Book, view: Int, page: Page, solved: Boolean, helpers: PageHelpers, koShown: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         PageHead(chip = uiText("$view-sahifa"), running = storyText(book.title))
         PageArt(
             if (solved && page.revealImage != null) page.revealImage else page.image,
@@ -149,8 +159,24 @@ fun StoryPage(
             onColor = helpers.onColor,
             onPoke = helpers.onPoke
         )
-        PageNote(page, solved, helpers, ko != null)
-        HorizontalDivider(color = ArtRing.copy(alpha = 0.6f))
+        PageNote(page, solved, helpers, koShown)
+    }
+}
+
+/** The text side: the title, the text read aloud and the page's question. */
+@Composable
+private fun StoryText(
+    book: Book,
+    view: Int,
+    page: Page,
+    answer: AnswerState?,
+    helpers: PageHelpers,
+    ko: KoreanPage?,
+    onAnswer: (Int) -> Unit
+) {
+    val display = LocalDisplay.current
+    val headingFont = HeadingFont
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             PageHead(chip = null, running = uiText(book.genre), modifier = Modifier.weight(1f))
             ReadToggle(helpers.reading, helpers.onToggleReading)
