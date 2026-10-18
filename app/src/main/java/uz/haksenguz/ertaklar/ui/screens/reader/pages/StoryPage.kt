@@ -93,6 +93,9 @@ private val TraceText = Color(0xFF9A3412)
 private val TraceBg = Color(0xFFFFF7ED)
 private val TraceRing = Color(0xFFFDBA74)
 
+/** A sentence that plays when tapped looks like the rest of the text, not like a link. */
+private val PlainLink = TextLinkStyles(SpanStyle(color = Ink, textDecoration = TextDecoration.None))
+
 /** The piece being read aloud. */
 private val Reading = Color(0xFFFDE68A)
 
@@ -273,7 +276,7 @@ private fun pageText(
                 }
 
                 // A tap on the sentence plays it (its glossary words keep their own tap).
-                say != null -> withLink(LinkAnnotation.Clickable("say:$seg") { say(seg) }) { append(shown) }
+                say != null -> withLink(LinkAnnotation.Clickable("say:$seg", PlainLink) { say(seg) }) { append(shown) }
 
                 else -> append(shown)
             }

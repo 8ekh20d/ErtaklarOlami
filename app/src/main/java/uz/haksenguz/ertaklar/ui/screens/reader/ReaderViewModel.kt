@@ -233,6 +233,9 @@ class ReaderViewModel @Inject constructor(
                 viewModelScope.launch { r.state.collect { readAlongState.value = it } }
             }
             val place = passport.passport().regionOf(book)
+            // The book opens here: listening that starts by itself must begin on this page,
+            // even before the screen has reported it.
+            view = start
             opened.value = Opened(profile.id, book, start, twin, library.korean[book.key], tonight, place)
             // Someone has read this book aloud: say so, and at bedtime their voice reads on by itself.
             val first = state.filterNotNull().first { !it.loading }

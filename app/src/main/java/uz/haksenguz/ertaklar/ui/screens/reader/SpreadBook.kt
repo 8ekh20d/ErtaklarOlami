@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -325,30 +326,39 @@ private fun BoxScope.Leaf(t: SpreadState.Turn, p: Float, page: @Composable (Int,
                 cameraDistance = 32f * density
             }
     ) {
-        val front = p <= 0.5f
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { if (!front) scaleX = -1f }
-        ) {
-            // Forward the right page lifts, the next left page on its back; backward the
-            // mirror image. The cover is view -1's right side, its inside view 0's left.
-            val (shown, half) = when {
-                forward && front -> t.from to PageHalf.RIGHT
-                forward -> t.to to PageHalf.LEFT
-                front -> t.from to PageHalf.LEFT
-                else -> t.to to PageHalf.RIGHT
-            }
-            page(shown, half)
-            // The sheet darkens as it tilts away from the light.
-            val shade = if (front) min(1f, p * 2) * 0.6f else min(1f, (1 - p) * 2) * 0.6f
-            if (shade > 0f) {
+        val showingFront = p <= 0.5f
+        // Both faces are drawn from the start (the one turned away invisible), so the
+        // back's picture has loaded by the time the sheet stands upright and shows it.
+        // Forward the right page lifts, the next left page on its back; backward the
+        // mirror image. The cover is view -1's right side, its inside view 0's left.
+        listOf(true, false).forEach { isFront ->
+            key(isFront) {
+                val (shown, half) = when {
+                    forward && isFront -> t.from to PageHalf.RIGHT
+                    forward -> t.to to PageHalf.LEFT
+                    isFront -> t.from to PageHalf.LEFT
+                    else -> t.to to PageHalf.RIGHT
+                }
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(ShadeColor.copy(alpha = shade * 0.55f))
-                )
+                        .graphicsLayer {
+                            alpha = if (isFront == showingFront) 1f else 0f
+                            if (!isFront) scaleX = -1f
+                        }
+                ) {
+                    page(shown, half)
+                    // The sheet darkens as it tilts away from the light.
+                    val shade = if (isFront) min(1f, p * 2) * 0.6f else min(1f, (1 - p) * 2) * 0.6f
+                    if (shade > 0f) {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(ShadeColor.copy(alpha = shade * 0.55f))
+                        )
+                    }
+                }
             }
         }
     }
