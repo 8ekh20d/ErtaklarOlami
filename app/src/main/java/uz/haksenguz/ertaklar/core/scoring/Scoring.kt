@@ -4,6 +4,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import uz.haksenguz.ertaklar.data.models.AnswerState
 import uz.haksenguz.ertaklar.data.models.Book
+import uz.haksenguz.ertaklar.data.models.Question
 
 /** Points for each activity, and a finished book's stars. */
 object Scoring {
@@ -16,6 +17,17 @@ object Scoring {
 
     /** Encouragement after a right answer; children learn these words, so they stay Uzbek. */
     val PRAISE = listOf("Barakalla!", "Ofarin!", "Juda to'g'ri!", "Qoyil!", "Zo'r!")
+
+    /** The quiz for books without their own. */
+    val DEFAULT_QUIZ = Question(
+        q = "Kitobdan olgan xulosangiz qanday?",
+        a = listOf(
+            "Ezgulik, ilm, birdamlik va halollik har doim g'alaba qozonadi ✨",
+            "Dangasalik va yomon niyatlar hamisha mukofotlanadi 💤",
+            "Faqat yolg'izlik va janjallashish yaxshi natija beradi 🍃"
+        ),
+        ok = 0
+    )
 
     data class Score(val asked: Int, val right: Int, val stars: Int)
 

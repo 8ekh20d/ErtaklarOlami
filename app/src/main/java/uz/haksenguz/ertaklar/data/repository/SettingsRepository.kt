@@ -11,6 +11,12 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore) {
     val settings: Flow<Settings> = store.settings
 
     suspend fun setScript(script: String) = store.setScript(script)
+
+    /** "lat", "cyr" or "ko": Uzbek in Latin or Cyrillic, or the menus in Korean (Uzbek then in Latin). */
+    suspend fun setChoice(choice: String) = store.setScriptAndLang(
+        script = if (choice == "cyr") "cyr" else "lat",
+        lang = if (choice == "ko") "ko" else "uz"
+    )
     suspend fun setLang(lang: String) = store.setLang(lang)
     suspend fun setSound(on: Boolean) = store.setSound(on)
     suspend fun setReading(on: Boolean) = store.setReading(on)

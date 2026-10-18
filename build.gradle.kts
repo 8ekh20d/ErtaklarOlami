@@ -15,7 +15,10 @@ spotless {
     val composeRules = "io.nlopez.compose.rules:ktlint:${libs.versions.composeRules.get()}"
     kotlin {
         target("app/src/**/*.kt")
-        ktlint(ktlintVersion).customRuleSets(listOf(composeRules))
+        ktlint(ktlintVersion)
+            .customRuleSets(listOf(composeRules))
+            // LocalDisplay carries the chosen script and menu language to every screen.
+            .editorConfigOverride(mapOf("compose_allowed_composition_locals" to "LocalDisplay"))
     }
     kotlinGradle {
         target("*.gradle.kts", "app/*.gradle.kts")

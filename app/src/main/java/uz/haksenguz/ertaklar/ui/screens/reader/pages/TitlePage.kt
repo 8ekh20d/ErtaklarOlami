@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import uz.haksenguz.ertaklar.core.levels.Levels
 import uz.haksenguz.ertaklar.data.models.Book
 import uz.haksenguz.ertaklar.ui.components.PokeableArt
+import uz.haksenguz.ertaklar.ui.text.storyText
+import uz.haksenguz.ertaklar.ui.text.uiText
 import uz.haksenguz.ertaklar.ui.theme.DropCap
 import uz.haksenguz.ertaklar.ui.theme.Exlibris
 import uz.haksenguz.ertaklar.ui.theme.ExlibrisBorder
@@ -54,9 +56,9 @@ fun TitlePage(book: Book, resumePage: Int, onResume: () -> Unit, modifier: Modif
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text("Ushbu kitob", style = MaterialTheme.typography.labelMedium, color = InkSoft)
-            Text(book.title, style = MaterialTheme.typography.titleMedium, color = Rust, textAlign = TextAlign.Center)
-            Text("Ertaklar Olami kutubxonasidan", style = MaterialTheme.typography.labelMedium, color = InkSoft)
+            Text(uiText("Ushbu kitob"), style = MaterialTheme.typography.labelMedium, color = InkSoft)
+            Text(storyText(book.title), style = MaterialTheme.typography.titleMedium, color = Rust, textAlign = TextAlign.Center)
+            Text(uiText("Ertaklar Olami kutubxonasidan"), style = MaterialTheme.typography.labelMedium, color = InkSoft)
         }
         Column(
             Modifier.fillMaxWidth(),
@@ -64,8 +66,8 @@ fun TitlePage(book: Book, resumePage: Int, onResume: () -> Unit, modifier: Modif
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(FLEURON, color = Gold, fontSize = 26.sp)
-            Text(book.title, style = MaterialTheme.typography.headlineLarge, color = Rust, textAlign = TextAlign.Center)
-            Text(book.tag, style = MaterialTheme.typography.labelLarge, color = TitleTag, textAlign = TextAlign.Center)
+            Text(storyText(book.title), style = MaterialTheme.typography.headlineLarge, color = Rust, textAlign = TextAlign.Center)
+            Text(storyText(book.tag), style = MaterialTheme.typography.labelLarge, color = TitleTag, textAlign = TextAlign.Center)
             PokeableArt(
                 book.cover,
                 Modifier
@@ -76,16 +78,16 @@ fun TitlePage(book: Book, resumePage: Int, onResume: () -> Unit, modifier: Modif
                     .padding(3.dp)
                     .border(6.dp, Color.White, CircleShape)
                     .clip(CircleShape),
-                contentDescription = book.title
+                contentDescription = storyText(book.title)
             )
-            val ages = if (book.age.size >= 2) " · ${Levels.label(book.age)}" else ""
+            val ages = if (book.age.size >= 2) " · ${uiText(Levels.label(book.age))}" else ""
             Text(
-                "📄 ${book.pages.size} sahifa · ⏱ ~${book.minutes} daqiqa$ages",
+                uiText("📄 ${book.pages.size} sahifa · ⏱ ~${book.minutes} daqiqa") + ages,
                 style = MaterialTheme.typography.labelLarge,
                 color = InkSoft,
                 textAlign = TextAlign.Center
             )
-            Text("«Bir bor ekan, bir yo'q ekan...»", style = MaterialTheme.typography.titleMedium, color = DropCap)
+            Text(storyText("«Bir bor ekan, bir yo'q ekan...»"), style = MaterialTheme.typography.titleMedium, color = DropCap)
             if (resumePage > 0) {
                 Button(
                     onClick = onResume,
@@ -100,7 +102,7 @@ fun TitlePage(book: Book, resumePage: Int, onResume: () -> Unit, modifier: Modif
                             .padding(horizontal = 22.dp, vertical = 12.dp)
                     ) {
                         Text(
-                            "▶ Davom ettirish · $resumePage-sahifa",
+                            uiText("▶ Davom ettirish · $resumePage-sahifa"),
                             color = Color.White,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 15.sp
@@ -108,7 +110,7 @@ fun TitlePage(book: Book, resumePage: Int, onResume: () -> Unit, modifier: Modif
                     }
                 }
             } else {
-                Text("Sahifani suring yoki ➜ tugmasini bosing", style = MaterialTheme.typography.bodySmall, color = InkSoft)
+                Text(uiText("Sahifani suring yoki ➜ tugmasini bosing"), style = MaterialTheme.typography.bodySmall, color = InkSoft)
             }
         }
     }

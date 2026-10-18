@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -44,15 +46,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,15 +70,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.levels.Levels
 import uz.haksenguz.ertaklar.data.models.Category
 import uz.haksenguz.ertaklar.ui.components.AssetImage
 import uz.haksenguz.ertaklar.ui.components.CoverThumb
-import uz.haksenguz.ertaklar.ui.components.PointsChip
+import uz.haksenguz.ertaklar.ui.components.ScriptToggle
 import uz.haksenguz.ertaklar.ui.components.StarRow
 import uz.haksenguz.ertaklar.ui.components.TagChip
+import uz.haksenguz.ertaklar.ui.components.ToastHost
 import uz.haksenguz.ertaklar.ui.components.parseHue
+import uz.haksenguz.ertaklar.ui.components.rememberToastState
+import uz.haksenguz.ertaklar.ui.screens.profiles.ProfilesSheet
+import uz.haksenguz.ertaklar.ui.text.LocalDisplay
+import uz.haksenguz.ertaklar.ui.text.storyText
+import uz.haksenguz.ertaklar.ui.text.uiText
 import uz.haksenguz.ertaklar.ui.theme.Amber400
 import uz.haksenguz.ertaklar.ui.theme.Amber700
 import uz.haksenguz.ertaklar.ui.theme.Amber950
@@ -96,6 +103,9 @@ import uz.haksenguz.ertaklar.ui.theme.Orange200
 import uz.haksenguz.ertaklar.ui.theme.Sky100
 import uz.haksenguz.ertaklar.ui.theme.Sky800
 
+private val Orange500 = Color(0xFFF97316)
+private val EveningGlow = Color(0xFFFDE68A)
+
 /** The library: banner, category tabs, age shelves and the book cards. */
 @Composable
 fun LibraryScreen(
@@ -104,16 +114,17 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    val display = LocalDisplay.current
+    val toast = rememberToastState()
+    var profilesOpen by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    val later: () -> Unit = { scope.launch { snackbar.showSnackbar("Bu bo'lim tez orada qo'shiladi") } }
+    val later: () -> Unit = { toast.show(display.ui("Bu bo'lim tez orada qo'shiladi")) }
     val share: () -> Unit = {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "Ertaklar Olami — o'zbek ertaklari, rasmli va o'qib beriladigan kitoblar.")
+            putExtra(Intent.EXTRA_TEXT, display.ui("Ertaklar Olami — o'zbek ertaklari, rasmli va o'qib beriladigan kitoblar."))
         }
-        context.startActivity(Intent.createChooser(send, "Ulashish"))
+        context.startActivity(Intent.createChooser(send, display.ui("Ulashish")))
     }
 
     Box(
@@ -122,7 +133,13 @@ fun LibraryScreen(
             .background(AppBackground)
     ) {
         Column(Modifier.fillMaxSize()) {
-            Header(points = state.profile?.points ?: 0, avatar = state.profile?.avatar ?: "🦊", onProfile = later)
+            Header(
+                points = state.profile?.points ?: 0,
+                avatar = state.profile?.avatar ?: "🦊",
+                choice = display.choice,
+                onChoice = viewModel::setChoice,
+                onProfile = { profilesOpen = true }
+            )
             if (state.loading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Brand500)
@@ -142,6 +159,7 @@ fun LibraryScreen(
                 ) {
                     libraryContent(
                         state = state,
+                        showKorean = display.korean,
                         onHero = { state.hero?.let { onOpenBook(it.key, it.continueReading) } },
                         onBedtime = later,
                         onDictionary = later,
@@ -154,20 +172,23 @@ fun LibraryScreen(
                 }
             }
         }
-        SnackbarHost(
-            snackbar,
+        ToastHost(
+            toast,
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(WindowInsets.navigationBars.asPaddingValues())
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp, start = 24.dp, end = 24.dp)
         )
     }
+
+    if (profilesOpen) ProfilesSheet(onDismiss = { profilesOpen = false })
 
     state.lockedTwinOf?.let { twin ->
         AlertDialog(
             onDismissRequest = viewModel::dismissLocked,
-            confirmButton = { TextButton(onClick = viewModel::dismissLocked) { Text("Tushunarli") } },
-            title = { Text("🔒 Hali yopiq") },
-            text = { Text("Avval «$twin» ertagini oxirigacha o'qing. Shunda uning Koreyadagi egizagi ochiladi!") },
+            confirmButton = { TextButton(onClick = viewModel::dismissLocked) { Text(uiText("Tushunarli")) } },
+            title = { Text(uiText("🔒 Hali yopiq")) },
+            text = { Text(uiText("Avval «$twin» ertagini oxirigacha o'qing. Shunda uning Koreyadagi egizagi ochiladi!")) },
             containerColor = Color.White
         )
     }
@@ -175,6 +196,7 @@ fun LibraryScreen(
 
 private fun LazyGridScope.libraryContent(
     state: LibraryUiState,
+    showKorean: Boolean,
     onHero: () -> Unit,
     onBedtime: () -> Unit,
     onDictionary: () -> Unit,
@@ -184,7 +206,7 @@ private fun LazyGridScope.libraryContent(
     onShelf: (String) -> Unit,
     onBook: (BookCard) -> Unit
 ) {
-    val full: (androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope) -> GridItemSpan = { GridItemSpan(it.maxLineSpan) }
+    val full: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
     state.hero?.let { hero ->
         item(span = full, key = "hero") {
             HeroBanner(hero, state.evening, onHero, onBedtime, onDictionary, onPassport, onShare)
@@ -195,17 +217,17 @@ private fun LazyGridScope.libraryContent(
     item(span = full, key = "heading") {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(Icons.Rounded.Bookmark, contentDescription = null, tint = Brand500)
-            Text("${state.books.size} ta interaktiv kitob", style = MaterialTheme.typography.titleLarge, color = Gray800)
+            Text(uiText("${state.books.size} ta interaktiv kitob"), style = MaterialTheme.typography.titleLarge, color = Gray800)
         }
     }
     if (state.books.isEmpty()) {
         item(span = full, key = "empty") { EmptyShelf(onShowAll = { onShelf(Levels.ALL) }) }
     }
-    items(state.books, key = { it.key }) { card -> BookCardView(card, onClick = { onBook(card) }) }
+    items(state.books, key = { it.key }) { card -> BookCardView(card, showKorean, onClick = { onBook(card) }) }
 }
 
 @Composable
-private fun Header(points: Int, avatar: String, onProfile: () -> Unit) {
+private fun Header(points: Int, avatar: String, choice: String, onChoice: (String) -> Unit, onProfile: () -> Unit) {
     Surface(color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
         Column {
             Row(
@@ -225,27 +247,31 @@ private fun Header(points: Int, avatar: String, onProfile: () -> Unit) {
                 ) {
                     Icon(Icons.Rounded.AutoStories, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    "Ertaklar Olami",
-                    style = MaterialTheme.typography.headlineSmall.merge(
-                        TextStyle(brush = Brush.horizontalGradient(listOf(Brand600, Color(0xFFF97316))))
+                    uiText("Ertaklar Olami"),
+                    style = MaterialTheme.typography.titleLarge.merge(
+                        TextStyle(brush = Brush.horizontalGradient(listOf(Brand600, Orange500)))
                     ),
                     modifier = Modifier.weight(1f),
-                    maxLines = 1
+                    maxLines = 2
                 )
-                PointsChip(points)
-                Spacer(Modifier.width(8.dp))
-                Box(
+                ScriptToggle(choice, onChoice)
+                Spacer(Modifier.width(6.dp))
+                // Who is reading, and their points; opens "Kim o'qiyapti?".
+                Row(
                     Modifier
-                        .size(48.dp)
+                        .height(48.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White)
                         .border(1.dp, Orange200, RoundedCornerShape(16.dp))
-                        .clickable(onClickLabel = "Kim o'qiyapti?", onClick = onProfile),
-                    contentAlignment = Alignment.Center
+                        .clickable(onClickLabel = uiText("Kim o'qiyapti?"), onClick = onProfile)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(avatar, fontSize = 24.sp)
+                    Text("⭐$points", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = Brand700)
                 }
             }
             HorizontalDivider(color = Orange100)
@@ -278,7 +304,7 @@ private fun HeroBanner(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "📚 HAQIQIY KITOBDEK VARAQLANADI",
+                uiText("📚 Haqiqiy kitobdek varaqlanadi").uppercase(),
                 color = Color.White,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
@@ -287,13 +313,13 @@ private fun HeroBanner(
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             )
             Text(
-                "O'zbek xalq ertaklari, Navoiy dostonlari va sehrli sarguzashtlar",
+                uiText("O'zbek xalq ertaklari, Navoiy dostonlari va sehrli sarguzashtlar"),
                 color = Color.White,
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center
             )
             Text(
-                "Kitobni oching, sahifani surib varaqlang, rasmlarga bosib qahramonlarni jonlantiring va savollarga javob bering!",
+                uiText("Kitobni oching, sahifani surib varaqlang, rasmlarga bosib qahramonlarni jonlantiring va savollarga javob bering!"),
                 color = Brand100,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center
@@ -306,7 +332,7 @@ private fun HeroBanner(
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(onClick = onOpen)
             ) {
-                AssetImage(hero.cover, Modifier.fillMaxSize(), contentDescription = hero.title)
+                AssetImage(hero.cover, Modifier.fillMaxSize(), contentDescription = storyText(hero.title))
             }
             Button(
                 onClick = onOpen,
@@ -317,10 +343,19 @@ private fun HeroBanner(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.MenuBook, contentDescription = null, tint = Brand500)
                 Spacer(Modifier.width(8.dp))
-                Text(if (hero.continueReading) "Davom ettirish" else "Kitobni Ochish", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    uiText(if (hero.continueReading) "Davom ettirish" else "Kitobni Ochish"),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
             }
-            hero.resumeLine?.let {
-                Text(it, color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+            hero.resumePage?.let { page ->
+                Text(
+                    "📖 ${storyText(hero.title)} · $page / ${hero.pages}",
+                    color = Color.White.copy(alpha = 0.9f),
+                    style = MaterialTheme.typography.labelLarge,
+                    textAlign = TextAlign.Center
+                )
             }
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -343,7 +378,7 @@ private fun BannerButton(emoji: String?, label: String, glow: Boolean = false, o
             .height(40.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = if (glow) 0.35f else 0.2f))
-            .then(if (glow) Modifier.border(2.dp, Color(0xFFFDE68A), RoundedCornerShape(12.dp)) else Modifier)
+            .then(if (glow) Modifier.border(2.dp, EveningGlow, RoundedCornerShape(12.dp)) else Modifier)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -356,7 +391,7 @@ private fun BannerButton(emoji: String?, label: String, glow: Boolean = false, o
         } else {
             Icon(Icons.Rounded.Share, null, tint = Color.White, modifier = Modifier.size(18.dp))
         }
-        Text(label, color = Color.White, style = MaterialTheme.typography.labelLarge)
+        Text(uiText(label), color = Color.White, style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -366,7 +401,7 @@ private fun CategoryTabs(tabs: List<CategoryTab>, selected: Category, onSelect: 
         items(tabs, key = { it.category.id }) { tab ->
             val on = tab.category == selected
             Text(
-                "${tab.category.label} (${tab.count})",
+                "${uiText(tab.category.label)} (${tab.count})",
                 color = if (on) Color.White else Gray600,
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
@@ -389,12 +424,12 @@ private fun AgeShelves(shelf: String, myShelf: String?, avatar: String?, onShelf
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        item { Text("🎈 Yoshi:", color = Gray500, style = MaterialTheme.typography.labelLarge) }
+        item { Text(uiText("🎈 Yoshi:"), color = Gray500, style = MaterialTheme.typography.labelLarge) }
         items(options, key = { it.first }) { (id, label) ->
             val on = id == shelf
             val face = if (id == myShelf && avatar != null) "$avatar " else ""
             Text(
-                face + label,
+                face + uiText(label),
                 color = if (on) Amber950 else Gray600,
                 style = MaterialTheme.typography.labelMedium,
                 maxLines = 1,
@@ -412,7 +447,7 @@ private fun AgeShelves(shelf: String, myShelf: String?, avatar: String?, onShelf
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BookCardView(card: BookCard, onClick: () -> Unit) {
+private fun BookCardView(card: BookCard, showKorean: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -428,21 +463,24 @@ private fun BookCardView(card: BookCard, onClick: () -> Unit) {
         CoverThumb(card.cover, parseHue(card.hue), locked = card.locked)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (card.genre.isNotEmpty()) TagChip(card.genre, Orange100, Brand700)
-                if (card.ageLabel.isNotEmpty()) TagChip(card.ageLabel, Sky100, Sky800)
-                if (card.isNew) TagChip("Yangi", Emerald500, Color.White)
+                if (card.genre.isNotEmpty()) TagChip(uiText(card.genre), Orange100, Brand700)
+                if (card.ageLabel.isNotEmpty()) TagChip(uiText(card.ageLabel), Sky100, Sky800)
+                if (card.isNew) TagChip(uiText("Yangi"), Emerald500, Color.White)
             }
             Text(
-                card.title,
+                storyText(card.title),
                 style = MaterialTheme.typography.titleMedium,
                 color = Gray800,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            if (showKorean && card.koTitle != null) {
+                Text(card.koTitle, style = MaterialTheme.typography.labelLarge, color = Gray500)
+            }
             if (card.locked && card.twinTitle != null) {
-                Text("🔒 «${card.twinTitle}»ni o'qib tugating", style = MaterialTheme.typography.labelMedium, color = Sky800)
+                Text(uiText("🔒 «${card.twinTitle}»ni o'qib tugating"), style = MaterialTheme.typography.labelMedium, color = Sky800)
             } else {
-                Text("📄 ${card.pageCount} sahifali rasmli kitob", style = MaterialTheme.typography.bodySmall, color = Gray500)
+                Text(uiText("📄 ${card.pageCount} sahifali rasmli kitob"), style = MaterialTheme.typography.bodySmall, color = Gray500)
             }
             when {
                 card.progressPage != null -> ProgressLine(card.progressPage, card.pageCount)
@@ -452,7 +490,7 @@ private fun BookCardView(card: BookCard, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     StarRow(card.stars)
-                    Text("O'qildi", style = MaterialTheme.typography.labelMedium, color = Amber700)
+                    Text(uiText("O'qildi"), style = MaterialTheme.typography.labelMedium, color = Amber700)
                 }
             }
         }
@@ -493,11 +531,11 @@ private fun EmptyShelf(onShowAll: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("📚 Bu yoshga mos kitob hali yo'q.", fontWeight = FontWeight.Bold, color = Gray600)
+        Text(uiText("📚 Bu yoshga mos kitob hali yo'q."), fontWeight = FontWeight.Bold, color = Gray600)
         Button(
             onClick = onShowAll,
             colors = ButtonDefaults.buttonColors(containerColor = Brand500),
             shape = RoundedCornerShape(12.dp)
-        ) { Text("Barcha kitoblarni ko'rsatish") }
+        ) { Text(uiText("Barcha kitoblarni ko'rsatish")) }
     }
 }

@@ -38,3 +38,15 @@ val Typography = Typography(
     labelMedium = TextStyle(fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 12.sp, lineHeight = 16.sp),
     labelSmall = TextStyle(fontFamily = Nunito, fontWeight = FontWeight.Bold, fontSize = 11.sp, lineHeight = 14.sp)
 )
+
+/** Fredoka has no Cyrillic letters, so in Cyrillic the headings are set in Nunito. */
+val CyrillicTypography = Typography.run {
+    fun TextStyle.nunito() = copy(fontFamily = Nunito, fontWeight = FontWeight.ExtraBold)
+    copy(
+        headlineLarge = headlineLarge.nunito(),
+        headlineMedium = headlineMedium.nunito(),
+        headlineSmall = headlineSmall.nunito(),
+        titleLarge = titleLarge.nunito(),
+        titleMedium = titleMedium.nunito()
+    )
+}

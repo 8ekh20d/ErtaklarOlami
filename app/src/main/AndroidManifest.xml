@@ -4,6 +4,13 @@
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- The phone's text-to-speech engine, for Korean word meanings. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:name=".ErtaklarApp"
         android:allowBackup="true"

@@ -26,6 +26,7 @@ import uz.haksenguz.ertaklar.data.models.Category
 import uz.haksenguz.ertaklar.data.models.Profile
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
+import uz.haksenguz.ertaklar.data.repository.SettingsRepository
 
 data class LibraryUiState(
     val loading: Boolean = true,
@@ -50,14 +51,17 @@ data class Hero(
     val title: String,
     val cover: String,
     val continueReading: Boolean,
-    /** "📖 Zumrad va Qimmat · 3 / 12" while a book is in progress. */
-    val resumeLine: String?
+    /** The page reached, while a book is in progress. */
+    val resumePage: Int?,
+    val pages: Int
 )
 
 data class CategoryTab(val category: Category, val count: Int)
 
 data class BookCard(
     val key: String,
+    /** The Korean title, shown under the Uzbek one with the Korean menus. */
+    val koTitle: String?,
     val title: String,
     val genre: String,
     val ageLabel: String,
@@ -80,7 +84,8 @@ data class BookCard(
 class LibraryViewModel @Inject constructor(
     private val content: ContentRepository,
     private val profiles: ProfileRepository,
-    progress: ProgressRepository
+    progress: ProgressRepository,
+    private val settings: SettingsRepository
 ) : ViewModel() {
 
     private val library = MutableStateFlow<Library?>(null)
@@ -109,6 +114,11 @@ class LibraryViewModel @Inject constructor(
             profiles.ensureActive()
             library.value = content.library()
         }
+    }
+
+    /** Lot / Кир / 한. */
+    fun setChoice(choice: String) {
+        viewModelScope.launch { settings.setChoice(choice) }
     }
 
     fun selectCategory(c: Category) {
@@ -151,6 +161,7 @@ class LibraryViewModel @Inject constructor(
             val total = book.pages.size
             BookCard(
                 key = book.key,
+                koTitle = lib.korean[book.key]?.title,
                 title = book.title,
                 genre = book.genre,
                 ageLabel = Levels.label(book.age),
@@ -195,7 +206,8 @@ class LibraryViewModel @Inject constructor(
             title = book.title,
             cover = book.cover,
             continueReading = inProgress != null,
-            resumeLine = inProgress?.let { "📖 ${book.title} · ${lastRec!!.page} / ${book.pages.size}" }
+            resumePage = if (inProgress != null) lastRec?.page else null,
+            pages = book.pages.size
         )
     }
 

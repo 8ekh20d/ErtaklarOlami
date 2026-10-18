@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import uz.haksenguz.ertaklar.core.scoring.Scoring
 import uz.haksenguz.ertaklar.data.models.Book
+import uz.haksenguz.ertaklar.ui.text.storyText
+import uz.haksenguz.ertaklar.ui.text.uiText
 import uz.haksenguz.ertaklar.ui.theme.Amber500
 import uz.haksenguz.ertaklar.ui.theme.ArtHint
 import uz.haksenguz.ertaklar.ui.theme.Brand700
@@ -69,14 +71,18 @@ fun FinalePage(
     score: Scoring.Score,
     twinTitle: String?,
     actions: FinaleActions,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The moral in Korean, when the book has it; [koShown] while 🇰🇷 is on. */
+    koMoral: String? = null,
+    koShown: Boolean = false,
+    onToggleKorean: () -> Unit = {}
 ) {
     BookSheet(modifier) {
-        PageHead(chip = null, running = book.title, chipFirst = false)
-        PageArt(book.endImage, contentDescription = "Tamom!") {
+        PageHead(chip = null, running = storyText(book.title), chipFirst = false)
+        PageArt(book.endImage, contentDescription = uiText("Tamom!")) {
             Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.TopCenter) {
                 Text(
-                    "Tamom!",
+                    uiText("Tamom!"),
                     style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
                     color = Color.White,
                     modifier = Modifier
@@ -89,7 +95,7 @@ fun FinalePage(
             }
         }
         Text(
-            "✨ Ertak shu yerda tugadi ✨",
+            uiText("✨ Ertak shu yerda tugadi ✨"),
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = ArtHint,
@@ -102,7 +108,7 @@ fun FinalePage(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(FLEURON, color = Gold, fontSize = 26.sp)
-            Text("Ertak tugadi!", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp), color = Rust)
+            Text(uiText("Ertak tugadi!"), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp), color = Rust)
             Text(
                 buildAnnotatedString {
                     withStyle(TextStyle(color = Amber500).toSpanStyle()) { append("★".repeat(score.stars)) }
@@ -113,44 +119,65 @@ fun FinalePage(
                 style = TextStyle(shadow = Shadow(Brand700, androidx.compose.ui.geometry.Offset(0f, 6f), 0f))
             )
             Text(
-                if (score.asked > 0) "Savollarga javoblar: ${score.right} / ${score.asked}" else "Ajoyib o'qidingiz!",
+                uiText(if (score.asked > 0) "Savollarga javoblar: ${score.right} / ${score.asked}" else "Ajoyib o'qidingiz!"),
                 style = MaterialTheme.typography.labelLarge,
                 color = InkSoft
             )
-            Text(
-                buildAnnotatedString {
-                    withStyle(TextStyle(fontWeight = FontWeight.ExtraBold, color = Rust).toSpanStyle()) { append("Ertakdan saboq: ") }
-                    append(book.moral.ifEmpty { "Yaxshilik va ezgulik har doim g'alaba qiladi." })
-                },
-                style = MaterialTheme.typography.bodyLarge,
-                color = Ink,
-                modifier = Modifier
+            Column(
+                Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(WordCardTo)
                     .border(2.dp, GoldSoft, RoundedCornerShape(16.dp))
-                    .padding(14.dp)
-            )
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        uiText("Ertakdan saboq:"),
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Rust,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    if (koMoral != null) KoreanToggle(koShown, onToggleKorean)
+                }
+                Text(
+                    storyText(book.moral.ifEmpty { "Yaxshilik va ezgulik har doim g'alaba qiladi." }),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Ink
+                )
+                if (koShown && koMoral != null) KoLine(koMoral)
+            }
             when {
-                twinTitle != null -> WideButton("🇰🇷 Egizak ertak ochildi! «$twinTitle»", FairySky, onClick = actions.onTwin)
-                book.compare != null -> WideButton("🔍 Farqlarni toping", FairySky, onClick = actions.onCompare)
+                twinTitle != null -> WideButton(
+                    "${uiText("🇰🇷 Egizak ertak ochildi!")} «${storyText(twinTitle)}»",
+                    FairySky,
+                    onClick = actions.onTwin
+                )
+
+                book.compare != null -> WideButton(uiText("🔍 Farqlarni toping"), FairySky, onClick = actions.onCompare)
             }
             FlowRow(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ActionButton("🏆 Bilimdon testi", Brush.linearGradient(listOf(Amber500, TamomTo)), Color.White, actions.onQuiz)
+                ActionButton(uiText("🏆 Bilimdon testi"), Brush.linearGradient(listOf(Amber500, TamomTo)), Color.White, actions.onQuiz)
                 if (book.order) {
                     ActionButton(
-                        "🧩 Voqealar tartibi",
+                        uiText("🧩 Voqealar tartibi"),
                         Brush.linearGradient(listOf(FairyPurple, FairyPurple)),
                         Color.White,
                         actions.onOrder
                     )
                 }
-                ActionButton("↺ Boshidan o'qish", Brush.linearGradient(listOf(ChapterChipBg, ChapterChipBg)), ChoiceText, actions.onRestart)
-                ActionButton("📤 Ulashish", Brush.linearGradient(listOf(ChapterChipBg, ChapterChipBg)), ChoiceText, actions.onShare)
+                ActionButton(
+                    uiText("↺ Boshidan o'qish"),
+                    Brush.linearGradient(listOf(ChapterChipBg, ChapterChipBg)),
+                    ChoiceText,
+                    actions.onRestart
+                )
+                ActionButton(uiText("📤 Ulashish"), Brush.linearGradient(listOf(ChapterChipBg, ChapterChipBg)), ChoiceText, actions.onShare)
             }
         }
     }

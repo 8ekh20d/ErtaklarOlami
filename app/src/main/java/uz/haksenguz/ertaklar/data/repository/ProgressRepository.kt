@@ -58,6 +58,15 @@ class ProgressRepository @Inject constructor(
         outcome
     }
 
+    /** The final quiz was answered right; its points come only the first time. Returns whether it was the first. */
+    suspend fun passQuiz(profileId: String, key: String): Boolean = mutex.withLock {
+        val current = load(profileId, key)
+        if (current.quiz) return false
+        dao.upsert(current.copy(quiz = true).toEntity(profileId))
+        profileDao.addPoints(profileId, Scoring.QUIZ)
+        true
+    }
+
     private suspend fun load(profileId: String, key: String): BookRecord = dao.record(profileId, key)?.toModel() ?: BookRecord(key)
 
     private fun BookRecordEntity.toModel() = BookRecord(

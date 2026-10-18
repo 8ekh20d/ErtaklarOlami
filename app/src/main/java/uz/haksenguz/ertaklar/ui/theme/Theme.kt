@@ -5,6 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 
 /** Light only; bedtime gets its own dark theme. */
 private val LightColors = lightColorScheme(
@@ -33,11 +34,15 @@ val AppBackground = Brush.linearGradient(listOf(Brand50, Amber50, Orange100))
 /** The banner: orange-400 → brand-500 → amber-500. */
 val HeroGradient = Brush.horizontalGradient(listOf(Orange400, Brand500, Amber500))
 
+/** The font of headings and big letters in the current script. */
+val HeadingFont: FontFamily?
+    @Composable get() = MaterialTheme.typography.titleLarge.fontFamily
+
 @Composable
-fun ErtaklarTheme(content: @Composable () -> Unit) {
+fun ErtaklarTheme(cyrillic: Boolean = false, content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = LightColors,
-        typography = Typography,
+        typography = if (cyrillic) CyrillicTypography else Typography,
         content = content
     )
 }

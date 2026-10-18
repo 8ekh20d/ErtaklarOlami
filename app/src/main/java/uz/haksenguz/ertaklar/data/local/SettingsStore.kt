@@ -30,6 +30,14 @@ class SettingsStore @Inject constructor(private val store: DataStore<Preferences
         )
     }
 
+    /** Lot / Кир / 한 at once, so no screen sees half a switch. */
+    suspend fun setScriptAndLang(script: String, lang: String) {
+        store.edit {
+            it[SCRIPT] = script
+            it[LANG] = lang
+        }
+    }
+
     suspend fun setScript(value: String) {
         store.edit { it[SCRIPT] = value }
     }

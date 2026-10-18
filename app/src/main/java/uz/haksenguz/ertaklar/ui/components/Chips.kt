@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import uz.haksenguz.ertaklar.ui.text.uiText
 import uz.haksenguz.ertaklar.ui.theme.Amber500
 import uz.haksenguz.ertaklar.ui.theme.Brand700
 import uz.haksenguz.ertaklar.ui.theme.Gray300
@@ -59,6 +60,6 @@ fun PointsChip(points: Int, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(Icons.Rounded.Star, contentDescription = null, tint = Amber500, modifier = Modifier.padding(0.dp))
-        Text("$points ball", color = Brand700, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(uiText("$points ball"), color = Brand700, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }

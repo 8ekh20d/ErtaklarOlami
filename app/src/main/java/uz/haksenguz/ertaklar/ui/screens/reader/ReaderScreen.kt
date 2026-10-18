@@ -1,7 +1,14 @@
 package uz.haksenguz.ertaklar.ui.screens.reader
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +30,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,10 +49,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -59,18 +72,28 @@ import uz.haksenguz.ertaklar.ui.components.rememberToastState
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.CoverPage
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.FinaleActions
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.FinalePage
+import uz.haksenguz.ertaklar.ui.screens.reader.pages.PageHelpers
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.StoryPage
 import uz.haksenguz.ertaklar.ui.screens.reader.pages.TitlePage
+import uz.haksenguz.ertaklar.ui.text.LocalDisplay
+import uz.haksenguz.ertaklar.ui.text.storyText
+import uz.haksenguz.ertaklar.ui.text.uiText
 import uz.haksenguz.ertaklar.ui.theme.Amber500
 import uz.haksenguz.ertaklar.ui.theme.AppBackground
 import uz.haksenguz.ertaklar.ui.theme.Brand500
 import uz.haksenguz.ertaklar.ui.theme.Brand700
+import uz.haksenguz.ertaklar.ui.theme.GowunDodum
 import uz.haksenguz.ertaklar.ui.theme.Gray700
+import uz.haksenguz.ertaklar.ui.theme.Gray800
+import uz.haksenguz.ertaklar.ui.theme.HeadingFont
 import uz.haksenguz.ertaklar.ui.theme.Orange100
 
 private val PrevBg = Color(0xFFFEF3C7)
 private val PrevText = Color(0xFF78350F)
 private val TrackBg = Color(0xFFE5E7EB)
+private val GlossBorder = Color(0xFF6EE7B7)
+private val GlossTerm = Color(0xFF065F46)
+private val GlossSay = Color(0xFFD1FAE5)
 
 /**
  * The book reader. Pages turn with a swipe or the buttons below:
@@ -80,18 +103,23 @@ private val TrackBg = Color(0xFFE5E7EB)
 fun ReaderScreen(
     onBack: () -> Unit,
     onOpenBook: (String) -> Unit,
+    onOpenQuiz: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val display = LocalDisplay.current
     val toast = rememberToastState()
+    val openQuiz by rememberUpdatedState { state.book?.key?.let(onOpenQuiz) }
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
-                is ReaderEvent.Toast -> toast.show(event.text)
+                is ReaderEvent.Toast -> toast.show(display.ui(event.text))
+                ReaderEvent.OpenQuiz -> openQuiz()
             }
         }
     }
+    BackHandler(enabled = state.glossCard != null) { viewModel.closeGloss() }
 
     Box(
         modifier
@@ -113,14 +141,14 @@ fun ReaderScreen(
             val share = {
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, "«${book.title}» — Ertaklar Olami ilovasidagi rasmli ertak.")
+                    putExtra(Intent.EXTRA_TEXT, display.ui("«${book.title}» — o'zbek ertagi: rasmli, varaqlanadigan kitob"))
                 }
-                context.startActivity(Intent.createChooser(send, "Ulashish"))
+                context.startActivity(Intent.createChooser(send, display.ui("Ulashish")))
             }
             val actions = FinaleActions(
                 onTwin = { state.twin?.let { onOpenBook(it.first) } },
                 onCompare = viewModel::comingSoon,
-                onQuiz = viewModel::comingSoon,
+                onQuiz = viewModel::openQuiz,
                 onOrder = viewModel::comingSoon,
                 onRestart = { goTo(1) },
                 onShare = share
@@ -140,22 +168,57 @@ fun ReaderScreen(
 
                         Reading.TITLE -> TitlePage(book, state.resumePage, onResume = { goTo(state.resumePage) })
 
-                        state.lastView -> FinalePage(book, state.score!!, state.twin?.second, actions)
-
-                        else -> StoryPage(
+                        state.lastView -> FinalePage(
                             book = book,
-                            view = shown,
-                            answer = state.record.answers[shown.toString()],
-                            onAnswer = { idx -> viewModel.answer(shown, idx) }
+                            score = state.score!!,
+                            twinTitle = state.twin?.second,
+                            actions = actions,
+                            koMoral = state.korean?.moral?.takeIf { it.isNotEmpty() },
+                            koShown = state.koView == shown,
+                            onToggleKorean = { viewModel.toggleKorean(shown) }
                         )
+
+                        else -> {
+                            val koShown = state.koView == shown
+                            StoryPage(
+                                book = book,
+                                view = shown,
+                                answer = state.record.answers[shown.toString()],
+                                helpers = PageHelpers(
+                                    korean = state.korean,
+                                    gloss = state.gloss,
+                                    koShown = koShown,
+                                    readsOut = state.reading && !koShown,
+                                    hasKorean = state.hasKorean(shown),
+                                    reading = state.reading,
+                                    onToggleKorean = { viewModel.toggleKorean(shown) },
+                                    onToggleReading = viewModel::toggleReading,
+                                    onGloss = viewModel::openGloss
+                                ),
+                                onAnswer = { idx -> viewModel.answer(shown, idx) }
+                            )
+                        }
                     }
                 }
                 BottomBar(
                     view = view,
                     pages = state.pages,
                     onPrev = { goTo(view - 1) },
-                    onNext = { if (view == state.lastView) viewModel.comingSoon() else goTo(view + 1) }
+                    onNext = { if (view == state.lastView) viewModel.openQuiz() else goTo(view + 1) }
                 )
+            }
+        }
+        AnimatedVisibility(
+            visible = state.glossCard != null,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 84.dp, start = 16.dp, end = 16.dp)
+        ) {
+            state.glossCard?.let { (term, meaning) ->
+                GlossCard(term, meaning, onSay = viewModel::sayGloss, onClose = viewModel::closeGloss)
             }
         }
         ToastHost(
@@ -168,7 +231,39 @@ fun ReaderScreen(
     }
 }
 
-/** "Muqova", "Sarlavha", "3 / 12 sahifa" or "Tamom". */
+/** A tapped word: its Korean meaning, which the phone's Korean voice can say. */
+@Composable
+private fun GlossCard(term: String, meaning: String, onSay: () -> Unit, onClose: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .shadow(16.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
+            .border(2.dp, GlossBorder, RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text("🇰🇷", fontSize = 22.sp)
+        Column(Modifier.weight(1f)) {
+            Text(storyText(term), fontFamily = HeadingFont, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = GlossTerm)
+            Text(meaning, fontFamily = GowunDodum, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 24.sp, color = Gray800)
+        }
+        FilledTonalIconButton(
+            onClick = onSay,
+            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = GlossSay, contentColor = GlossTerm),
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = uiText("Koreyschasini eshitish"))
+        }
+        FilledTonalIconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+            Icon(Icons.Rounded.Close, contentDescription = uiText("Yopish"))
+        }
+    }
+}
+
+/** "Muqova", "Sarlavha", "3 / 12 sahifa" or "Tamom" (in Uzbek; shown through the display). */
 private fun label(view: Int, pages: Int) = when {
     view == Reading.COVER -> "Muqova"
     view == Reading.TITLE -> "Sarlavha"
@@ -190,7 +285,7 @@ private fun TopBar(view: Int, pages: Int, points: Int, onBack: () -> Unit) {
             TextButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Gray700)
                 Spacer(Modifier.width(4.dp))
-                Text("Kutubxona", color = Gray700, fontWeight = FontWeight.Bold)
+                Text(uiText("Kutubxona"), color = Gray700, fontWeight = FontWeight.Bold)
             }
             val progress = if (view > pages) 1f else (view.coerceAtLeast(0).toFloat() / pages).coerceIn(0f, 1f)
             Box(
@@ -209,7 +304,7 @@ private fun TopBar(view: Int, pages: Int, points: Int, onBack: () -> Unit) {
                 )
             }
             Text(
-                label(view, pages),
+                uiText(label(view, pages)),
                 style = MaterialTheme.typography.labelMedium,
                 color = Brand700,
                 maxLines = 1,
@@ -242,16 +337,16 @@ private fun BottomBar(view: Int, pages: Int, onPrev: () -> Unit, onNext: () -> U
                 modifier = Modifier.height(48.dp)
             ) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null)
-                Text("Oldingi", fontWeight = FontWeight.Bold)
+                Text(uiText("Oldingi"), fontWeight = FontWeight.Bold)
             }
             Text(
-                if (view in 1..pages) "Sahifa $view / $pages" else label(view, pages),
+                uiText(if (view in 1..pages) "Sahifa $view / $pages" else label(view, pages)),
                 style = MaterialTheme.typography.labelMedium,
                 color = PrevText
             )
             val (text, icon) = when {
                 view == Reading.COVER -> "Kitobni ochish" to Icons.AutoMirrored.Rounded.MenuBook
-                view > pages -> "Bilimdon testi" to Icons.Rounded.EmojiEvents
+                view > pages -> "Bilimdon Testi" to Icons.Rounded.EmojiEvents
                 else -> "Keyingi" to Icons.Rounded.ChevronRight
             }
             Button(
@@ -268,7 +363,7 @@ private fun BottomBar(view: Int, pages: Int, onPrev: () -> Unit, onNext: () -> U
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(uiText(text), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                 }
             }

@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import uz.haksenguz.ertaklar.data.models.Book
 import uz.haksenguz.ertaklar.ui.components.AssetImage
 import uz.haksenguz.ertaklar.ui.components.parseHue
+import uz.haksenguz.ertaklar.ui.text.storyText
+import uz.haksenguz.ertaklar.ui.text.uiText
 import uz.haksenguz.ertaklar.ui.theme.CoverTitle
 import uz.haksenguz.ertaklar.ui.theme.GoldSoft
 
@@ -70,7 +72,7 @@ fun CoverPage(book: Book, onOpen: () -> Unit, modifier: Modifier = Modifier) {
                 letterSpacing = 3.sp
             )
             Text(
-                book.title,
+                storyText(book.title),
                 color = CoverTitle,
                 style = MaterialTheme.typography.headlineLarge,
                 textAlign = TextAlign.Center
@@ -86,13 +88,13 @@ fun CoverPage(book: Book, onOpen: () -> Unit, modifier: Modifier = Modifier) {
                 AssetImage(book.cover, Modifier.fillMaxSize(), contentDescription = book.title)
             }
             Text(
-                book.tag,
+                storyText(book.tag),
                 color = GoldSoft,
                 style = MaterialTheme.typography.labelLarge,
                 textAlign = TextAlign.Center
             )
             Text(
-                "👆 Kitobni ochish uchun bosing",
+                uiText("👆 Kitobni ochish uchun bosing"),
                 color = Color.White.copy(alpha = 0.85f),
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp

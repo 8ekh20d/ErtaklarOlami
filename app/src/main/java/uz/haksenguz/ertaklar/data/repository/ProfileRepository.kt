@@ -61,6 +61,18 @@ class ProfileRepository @Inject constructor(
         return id
     }
 
+    /** A child's name, face and age; an empty name keeps the old one. */
+    suspend fun update(id: String, name: String, avatar: String, age: Int?) {
+        val p = dao.get(id) ?: return
+        dao.update(p.copy(name = name.trim().ifEmpty { p.name }, avatar = avatar, age = Profile.cleanAge(age)))
+    }
+
+    /** Removes a child with their points and reading; another child (or a new "Bolajon") takes over. */
+    suspend fun delete(id: String) {
+        mutex.withLock { dao.delete(id) }
+        ensureActive()
+    }
+
     suspend fun addPoints(id: String, n: Int) = dao.addPoints(id, n)
 
     suspend fun setLastBook(id: String, book: String?) = dao.setLastBook(id, book)
