@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.games.Games
 import uz.haksenguz.ertaklar.core.scoring.Scoring
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.content.ContentRepository
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
@@ -46,7 +47,8 @@ class OrderGameViewModel @Inject constructor(
     savedState: SavedStateHandle,
     content: ContentRepository,
     private val profiles: ProfileRepository,
-    private val progress: ProgressRepository
+    private val progress: ProgressRepository,
+    private val sfx: Sfx
 ) : ViewModel() {
 
     private val key = savedState.toRoute<OrderRoute>().key
@@ -85,6 +87,7 @@ class OrderGameViewModel @Inject constructor(
                     result = if (won) "🎉 Barakalla! Hammasi to'g'ri tartibda!" else ""
                 )
             }
+            sfx.chime(happy = true)
             if (won) win()
             return
         }

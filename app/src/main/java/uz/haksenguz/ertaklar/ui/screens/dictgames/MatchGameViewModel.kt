@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.dictionary.Dictionary
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.repository.DictionaryRepository
 
 /** A side of the board: the Uzbek words, or their Korean meanings. */
@@ -30,8 +31,8 @@ data class MatchUiState(
 
 /** "🇰🇷 Juftini top": tap an Uzbek word, then its Korean meaning; five pairs. */
 @HiltViewModel
-class MatchGameViewModel @Inject constructor(dictionary: DictionaryRepository) :
-    WordGameViewModel(dictionary, DictionaryRepository.MATCH) {
+class MatchGameViewModel @Inject constructor(dictionary: DictionaryRepository, sfx: Sfx) :
+    WordGameViewModel(dictionary, DictionaryRepository.MATCH, sfx) {
 
     private val _state = MutableStateFlow(MatchUiState())
     val state: StateFlow<MatchUiState> = _state.asStateFlow()
@@ -72,7 +73,7 @@ class MatchGameViewModel @Inject constructor(dictionary: DictionaryRepository) :
                 result = if (finished) "🎉 Barakalla! Hamma juftlar topildi!" else RIGHT
             )
         }
-        if (finished) won()
+        if (finished) won() else right()
     }
 
     private companion object {

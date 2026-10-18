@@ -72,7 +72,9 @@ data class FinaleActions(
     /** 🎨: the last picture as a colouring page. */
     val onColor: (() -> Unit)? = null,
     /** The stamp in the corner: the passport, at this place. */
-    val onPassport: () -> Unit = {}
+    val onPassport: () -> Unit = {},
+    /** The picture was tapped. */
+    val onPoke: () -> Unit = {}
 )
 
 private val PassportText = Color(0xFF1D4ED8)
@@ -98,7 +100,13 @@ fun FinalePage(
         Box {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 PageHead(chip = null, running = storyText(book.title), chipFirst = false)
-                PageArt(book.endImage, contentDescription = uiText("Tamom!"), onColor = actions.onColor, colorAt = Alignment.BottomEnd) {
+                PageArt(
+                    book.endImage,
+                    contentDescription = uiText("Tamom!"),
+                    onColor = actions.onColor,
+                    colorAt = Alignment.BottomEnd,
+                    onPoke = actions.onPoke
+                ) {
                     Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.TopCenter) {
                         Text(
                             uiText("Tamom!"),

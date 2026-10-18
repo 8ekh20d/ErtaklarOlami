@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.passport.Passport.StickerState
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.models.MapFile
 import uz.haksenguz.ertaklar.data.repository.PassportRepository
 import uz.haksenguz.ertaklar.navigation.PassportRoute
@@ -34,7 +35,11 @@ data class PassportUiState(
 
 /** "🗺️ Mening pasportim": the map, the stamps, the sticker album, and each place's card. */
 @HiltViewModel
-class PassportViewModel @Inject constructor(savedState: SavedStateHandle, private val repo: PassportRepository) : ViewModel() {
+class PassportViewModel @Inject constructor(
+    savedState: SavedStateHandle,
+    private val repo: PassportRepository,
+    private val sfx: Sfx
+) : ViewModel() {
 
     private val selected = MutableStateFlow(savedState.toRoute<PassportRoute>().region)
     private val fresh = MutableStateFlow<String?>(null)
@@ -73,6 +78,7 @@ class PassportViewModel @Inject constructor(savedState: SavedStateHandle, privat
 
                 StickerState.OK -> {
                     fresh.value = stickerId
+                    sfx.chime(happy = true)
                     "🎁 Yangi stiker: ${s.passport.sticker(stickerId)?.first?.name}!"
                 }
 

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.ErtaklarOlami" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- A warm cream while the app opens, like the library behind it. -->
+    <style name="Theme.ErtaklarOlami" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/cream</item>
+    </style>
 </resources>

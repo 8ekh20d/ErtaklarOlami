@@ -44,6 +44,10 @@ data object DictionaryRoute
 @Serializable
 data class DictGameRoute(val game: String)
 
+/** "📜 Litsenziyalar": the fonts', emoji's, icon's and map's licences. */
+@Serializable
+data object LicencesRoute
+
 /** "🗺️ Mening pasportim"; [region] opens that place's card too (from the end of a book). */
 @Serializable
 data class PassportRoute(val region: String? = null)

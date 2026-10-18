@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.games.TraceGrid
 import uz.haksenguz.ertaklar.core.scoring.Scoring
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.content.ContentRepository
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
@@ -45,7 +46,8 @@ class TraceViewModel @Inject constructor(
     savedState: SavedStateHandle,
     content: ContentRepository,
     private val profiles: ProfileRepository,
-    private val progress: ProgressRepository
+    private val progress: ProgressRepository,
+    private val sfx: Sfx
 ) : ViewModel() {
 
     private val route = savedState.toRoute<TraceRoute>()
@@ -75,6 +77,7 @@ class TraceViewModel @Inject constructor(
         when {
             score.passed && s.step + 1 < s.letters.size -> {
                 _state.update { it.copy(result = "⭐ Barakalla! Endi kichik harf.", waiting = true) }
+                sfx.chime()
                 viewModelScope.launch {
                     delay(700)
                     _state.update { it.copy(step = it.step + 1, round = it.round + 1, meter = 0, waiting = false) }
@@ -83,6 +86,7 @@ class TraceViewModel @Inject constructor(
 
             score.passed -> {
                 _state.update { it.copy(result = "🎉 Barakalla! Harfni o'rgandingiz!", won = true) }
+                sfx.chime(happy = true)
                 viewModelScope.launch {
                     val profile = profiles.active.filterNotNull().first()
                     val first = progress.traced(profile.id, route.key, big)

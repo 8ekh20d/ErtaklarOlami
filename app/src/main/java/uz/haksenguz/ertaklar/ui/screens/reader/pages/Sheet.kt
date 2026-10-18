@@ -121,12 +121,14 @@ fun PageArt(
     contentDescription: String? = null,
     onColor: (() -> Unit)? = null,
     colorAt: Alignment = Alignment.TopEnd,
+    onPoke: () -> Unit = {},
     overlay: @Composable () -> Unit = {}
 ) {
     val shape = RoundedCornerShape(18.dp)
     PokeableArt(
         path = path,
         contentDescription = contentDescription,
+        onPoke = onPoke,
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(400f / 384f)

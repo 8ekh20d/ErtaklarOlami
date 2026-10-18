@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uz.haksenguz.ertaklar.R
 import uz.haksenguz.ertaklar.core.games.Regions
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.content.ContentRepository
 import uz.haksenguz.ertaklar.navigation.ColoringRoute
 
@@ -56,7 +57,8 @@ data class ColoringUiState(
 class ColoringViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val content: ContentRepository,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val sfx: Sfx
 ) : ViewModel() {
 
     private val route = savedState.toRoute<ColoringRoute>()
@@ -118,6 +120,7 @@ class ColoringViewModel @Inject constructor(
         history.addLast(area to colors[area])
         colors[area] = color
         redraw()
+        sfx.chime()
         return true
     }
 

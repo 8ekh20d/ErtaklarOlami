@@ -119,6 +119,7 @@ fun LibraryScreen(
     onBedtime: (key: String) -> Unit,
     onDictionary: () -> Unit,
     onPassport: () -> Unit,
+    onLicences: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
@@ -177,6 +178,7 @@ fun LibraryScreen(
                         onDictionary = onDictionary,
                         stamps = stamps,
                         onPassport = onPassport,
+                        onLicences = onLicences,
                         onShare = share,
                         onCategory = viewModel::selectCategory,
                         onShelf = viewModel::selectShelf,
@@ -225,6 +227,7 @@ private fun LazyGridScope.libraryContent(
     onDictionary: () -> Unit,
     stamps: String,
     onPassport: () -> Unit,
+    onLicences: () -> Unit,
     onShare: () -> Unit,
     onCategory: (Category) -> Unit,
     onShelf: (String) -> Unit,
@@ -248,6 +251,13 @@ private fun LazyGridScope.libraryContent(
         item(span = full, key = "empty") { EmptyShelf(onShowAll = { onShelf(Levels.ALL) }) }
     }
     items(state.books, key = { it.key }) { card -> BookCardView(card, showKorean, onClick = { onBook(card) }) }
+    item(span = full, key = "licences") {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            TextButton(onClick = onLicences) {
+                Text(uiText("📜 Litsenziyalar"), color = Gray500, style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
 }
 
 @Composable

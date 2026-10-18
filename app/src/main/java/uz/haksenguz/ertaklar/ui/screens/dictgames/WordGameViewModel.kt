@@ -9,10 +9,15 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.dictionary.Dictionary
 import uz.haksenguz.ertaklar.core.scoring.Scoring
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.repository.DictionaryRepository
 
 /** What the three word games share: the child's words, the toasts, and the daily points. */
-abstract class WordGameViewModel(private val dictionary: DictionaryRepository, private val game: String) : ViewModel() {
+abstract class WordGameViewModel(
+    private val dictionary: DictionaryRepository,
+    private val game: String,
+    private val sfx: Sfx
+) : ViewModel() {
 
     private val toasts = Channel<String>(Channel.BUFFERED)
     val toastEvents: Flow<String> = toasts.receiveAsFlow()
@@ -24,8 +29,12 @@ abstract class WordGameViewModel(private val dictionary: DictionaryRepository, p
         toasts.trySend(text)
     }
 
+    /** A right move. */
+    protected fun right() = sfx.chime()
+
     /** The game is won: the first win of the day is worth points. */
     protected fun won() {
+        sfx.chime(happy = true)
         viewModelScope.launch {
             if (dictionary.win(game)) toasts.send("📖 Barakalla! +${Scoring.DICT} ball")
         }

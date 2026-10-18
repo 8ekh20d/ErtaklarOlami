@@ -118,7 +118,9 @@ class PageHelpers(
     /** 🎨: the page's picture as a colouring page. */
     val onColor: (() -> Unit)? = null,
     /** ✍️ Yozib ko'r: trace the Alifbo page's letter. */
-    val onTrace: (() -> Unit)? = null
+    val onTrace: (() -> Unit)? = null,
+    /** The picture was tapped (it hops, with a little chime). */
+    val onPoke: () -> Unit = {}
 )
 
 /**
@@ -144,7 +146,8 @@ fun StoryPage(
         PageArt(
             if (solved && page.revealImage != null) page.revealImage else page.image,
             contentDescription = storyText(page.title),
-            onColor = helpers.onColor
+            onColor = helpers.onColor,
+            onPoke = helpers.onPoke
         )
         PageNote(page, solved, helpers, ko != null)
         HorizontalDivider(color = ArtRing.copy(alpha = 0.6f))

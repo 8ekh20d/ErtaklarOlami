@@ -44,7 +44,7 @@ import uz.haksenguz.ertaklar.ui.theme.TitleTag
 
 /** The book's name page, with the ex-libris above it and "continue" when a reading is under way. */
 @Composable
-fun TitlePage(book: Book, resumePage: Int, onResume: () -> Unit, modifier: Modifier = Modifier) {
+fun TitlePage(book: Book, resumePage: Int, onResume: () -> Unit, modifier: Modifier = Modifier, onPoke: () -> Unit = {}) {
     BookSheet(modifier) {
         Column(
             Modifier
@@ -78,7 +78,8 @@ fun TitlePage(book: Book, resumePage: Int, onResume: () -> Unit, modifier: Modif
                     .padding(3.dp)
                     .border(6.dp, Color.White, CircleShape)
                     .clip(CircleShape),
-                contentDescription = storyText(book.title)
+                contentDescription = storyText(book.title),
+                onPoke = onPoke
             )
             val ages = if (book.age.size >= 2) " · ${uiText(Levels.label(book.age))}" else ""
             Text(

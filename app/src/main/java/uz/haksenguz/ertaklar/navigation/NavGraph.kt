@@ -13,6 +13,7 @@ import uz.haksenguz.ertaklar.ui.screens.dictgames.MatchGameScreen
 import uz.haksenguz.ertaklar.ui.screens.dictgames.SpellGameScreen
 import uz.haksenguz.ertaklar.ui.screens.dictionary.DictionaryScreen
 import uz.haksenguz.ertaklar.ui.screens.library.LibraryScreen
+import uz.haksenguz.ertaklar.ui.screens.licences.LicencesScreen
 import uz.haksenguz.ertaklar.ui.screens.ordergame.OrderGameScreen
 import uz.haksenguz.ertaklar.ui.screens.passport.PassportScreen
 import uz.haksenguz.ertaklar.ui.screens.quiz.QuizScreen
@@ -29,9 +30,11 @@ fun NavGraph() {
                 onOpenBook = { key, resume -> nav.navigate(ReaderRoute(key, resume)) },
                 onBedtime = { key -> nav.navigate(ReaderRoute(key, bedtime = true)) },
                 onDictionary = { nav.navigate(DictionaryRoute) },
-                onPassport = { nav.navigate(PassportRoute()) }
+                onPassport = { nav.navigate(PassportRoute()) },
+                onLicences = { nav.navigate(LicencesRoute) }
             )
         }
+        composable<LicencesRoute> { LicencesScreen(onBack = { nav.popBackStack() }) }
         composable<PassportRoute> {
             PassportScreen(
                 onBack = { nav.popBackStack() },

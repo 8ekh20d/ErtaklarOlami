@@ -27,6 +27,7 @@ import uz.haksenguz.ertaklar.core.scoring.Scoring
 import uz.haksenguz.ertaklar.core.text.Gloss
 import uz.haksenguz.ertaklar.data.audio.ClipPlayer
 import uz.haksenguz.ertaklar.data.audio.KoreanTts
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.content.ContentRepository
 import uz.haksenguz.ertaklar.data.models.Book
 import uz.haksenguz.ertaklar.data.models.BookRecord
@@ -78,6 +79,8 @@ data class ReaderUiState(
     /** At bedtime: tonight's pages. The questions rest, and past the last one it is good night. */
     val tonight: Bedtime.Tonight? = null,
     val goodnight: Goodnight? = null,
+    /** The page sound and the chimes are on. */
+    val sound: Boolean = true,
     /** The passport place this book takes the child to. */
     val place: Region? = null
 ) {
@@ -111,7 +114,13 @@ sealed interface ReaderEvent {
     data class OpenGame(val route: Any) : ReaderEvent
 }
 
-private data class Helpers(val koView: Int?, val reading: Boolean, val glossCard: Pair<String, String>?, val voiceSetting: String?)
+private data class Helpers(
+    val koView: Int?,
+    val reading: Boolean,
+    val glossCard: Pair<String, String>?,
+    val voiceSetting: String?,
+    val sound: Boolean
+)
 
 private data class Listening(val voices: List<Voice>, val readAlong: ReadAlongState, val goodnight: Goodnight?)
 
@@ -127,7 +136,8 @@ class ReaderViewModel @Inject constructor(
     private val gate: GateRepository,
     private val voiceRepo: VoiceRepository,
     private val player: ClipPlayer,
-    private val passport: PassportRepository
+    private val passport: PassportRepository,
+    private val sfx: Sfx
 ) : ViewModel() {
 
     private val route = savedState.toRoute<ReaderRoute>()
@@ -157,7 +167,7 @@ class ReaderViewModel @Inject constructor(
         val gloss = korean?.let { Gloss(it.forms) }
     }
 
-    private val helpers = combine(koView, settings.settings, glossCard) { k, s, g -> Helpers(k, s.reading, g, s.voice) }
+    private val helpers = combine(koView, settings.settings, glossCard) { k, s, g -> Helpers(k, s.reading, g, s.voice, s.sound) }
 
     private val bookVoices = opened.flatMapLatest { o -> o?.let { voiceRepo.voicesForBook(it.book.key) } ?: flowOf(emptyList()) }
 
@@ -179,6 +189,7 @@ class ReaderViewModel @Inject constructor(
                 glossCard = h.glossCard,
                 voices = l.voices,
                 voiceId = (l.voices.firstOrNull { it.id == h.voiceSetting } ?: l.voices.firstOrNull())?.id,
+                sound = h.sound,
                 readAlong = l.readAlong,
                 tonight = o.tonight,
                 goodnight = l.goodnight,
@@ -280,6 +291,7 @@ class ReaderViewModel @Inject constructor(
             when (val outcome = progress.answer(o.profileId, o.book, view, idx)) {
                 is Reading.Outcome.Right -> {
                     events.send(ReaderEvent.Toast("⭐ ${outcome.praise} +${Scoring.ANSWER} ball"))
+                    sfx.chime(happy = true)
                     readAlong?.onAnswer(true)
                 }
 
@@ -338,6 +350,7 @@ class ReaderViewModel @Inject constructor(
                 "Ertaga shu yerdan davom etamiz: «${o.book.title}», ${tonight.limit + 1}-sahifa."
             }
             goodnight.value = Goodnight(name, next, stamp, System.currentTimeMillis())
+            sfx.lullaby()
         }
     }
 
@@ -348,6 +361,19 @@ class ReaderViewModel @Inject constructor(
         if (records[o.book.key]?.finished == true) return null
         val stamps = passport.passport().stamps(content.library().books, records)
         return place.takeIf { it.id !in stamps }
+    }
+
+    // ---------- sounds ----------
+
+    /** A page starts to turn. */
+    fun turning(cover: Boolean) = sfx.page(cover, bedtime = opened.value?.tonight != null)
+
+    /** The picture was tapped. */
+    fun poke() = sfx.chime(bedtime = opened.value?.tonight != null)
+
+    /** 🔊 on and off: the page sound and the chimes. */
+    fun toggleSound() {
+        viewModelScope.launch { settings.setSound(!state.value.sound) }
     }
 
     /** The stamp on the last page: the passport, at this book's place. */

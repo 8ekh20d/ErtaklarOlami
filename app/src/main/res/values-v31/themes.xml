@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- The splash screen: the icon on cream. -->
+    <style name="Theme.ErtaklarOlami" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/cream</item>
+        <item name="android:windowSplashScreenBackground">@color/cream</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/amber</item>
+    </style>
+</resources>

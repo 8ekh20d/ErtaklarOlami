@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.games.Games
 import uz.haksenguz.ertaklar.core.scoring.Scoring
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.content.ContentRepository
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
@@ -58,7 +59,8 @@ class CompareViewModel @Inject constructor(
     savedState: SavedStateHandle,
     content: ContentRepository,
     private val profiles: ProfileRepository,
-    private val progress: ProgressRepository
+    private val progress: ProgressRepository,
+    private val sfx: Sfx
 ) : ViewModel() {
 
     private val key = savedState.toRoute<CompareRoute>().key
@@ -100,6 +102,7 @@ class CompareViewModel @Inject constructor(
             toasts.trySend("🤔 Yana o'ylab ko'ring!")
             return
         }
+        sfx.chime(happy = true)
         val next = s.index + 1
         val won = next == s.deck.size
         _state.update {

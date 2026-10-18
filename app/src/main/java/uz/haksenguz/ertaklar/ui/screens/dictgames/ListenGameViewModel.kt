@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.dictionary.Dictionary
 import uz.haksenguz.ertaklar.data.audio.KoreanTts
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.repository.DictionaryRepository
 
 data class ListenUiState(
@@ -30,8 +31,8 @@ data class ListenUiState(
 
 /** "🔊 Eshit va top": hear a word, tap its picture; five rounds. Without a voice the word is written to read. */
 @HiltViewModel
-class ListenGameViewModel @Inject constructor(dictionary: DictionaryRepository, private val tts: KoreanTts) :
-    WordGameViewModel(dictionary, DictionaryRepository.LISTEN) {
+class ListenGameViewModel @Inject constructor(dictionary: DictionaryRepository, sfx: Sfx, private val tts: KoreanTts) :
+    WordGameViewModel(dictionary, DictionaryRepository.LISTEN, sfx) {
 
     private val _state = MutableStateFlow(ListenUiState())
     val state: StateFlow<ListenUiState> = _state.asStateFlow()
@@ -97,6 +98,7 @@ class ListenGameViewModel @Inject constructor(dictionary: DictionaryRepository, 
             won()
             return
         }
+        right()
         viewModelScope.launch {
             delay(PAUSE_MS)
             _state.update { it.copy(result = "") }

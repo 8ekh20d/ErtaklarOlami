@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.dictionary.Dictionary
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.repository.DictionaryRepository
 
 /** A letter tile: its letter and its place in the word. */
@@ -34,8 +35,8 @@ data class SpellUiState(
 
 /** "🔤 So'zni yig'ing": under the word's picture, tap its letters in order; three words. */
 @HiltViewModel
-class SpellGameViewModel @Inject constructor(dictionary: DictionaryRepository) :
-    WordGameViewModel(dictionary, DictionaryRepository.SPELL) {
+class SpellGameViewModel @Inject constructor(dictionary: DictionaryRepository, sfx: Sfx) :
+    WordGameViewModel(dictionary, DictionaryRepository.SPELL, sfx) {
 
     private val _state = MutableStateFlow(SpellUiState())
     val state: StateFlow<SpellUiState> = _state.asStateFlow()
@@ -97,6 +98,7 @@ class SpellGameViewModel @Inject constructor(dictionary: DictionaryRepository) :
             won()
             return
         }
+        right()
         viewModelScope.launch {
             delay(PAUSE_MS)
             _state.update { it.copy(result = "") }

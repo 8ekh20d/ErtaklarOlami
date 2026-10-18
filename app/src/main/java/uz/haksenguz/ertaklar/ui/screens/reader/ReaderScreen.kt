@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -71,6 +72,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -118,6 +122,10 @@ private val ListenOff = Color(0xFF10B981)
 private val ListenOn = Color(0xFFF59E0B)
 private val VoiceRing = Color(0xFFA7F3D0)
 private val NightTop = Color(0xFF1E2A5A)
+private val SoundOnBg = Color(0xFFFEF3C7)
+private val SoundOnText = Color(0xFF92400E)
+private val SoundOffBg = Color(0xFFF3F4F6)
+private val SoundOffText = Color(0xFF4B5563)
 private val Moonlight = Color(0xFFFDE68A)
 
 /**
@@ -177,6 +185,14 @@ fun ReaderScreen(
             LaunchedEffect(pager) {
                 snapshotFlow { pager.settledPage }.distinctUntilChanged().collect { viewModel.onPageSettled(it - 1) }
             }
+            // A page swishes as it starts to turn; the cover (page 0) is heavier.
+            LaunchedEffect(pager) {
+                var from = pager.currentPage
+                snapshotFlow { pager.targetPage }.distinctUntilChanged().collect { to ->
+                    if (to != from) viewModel.turning(cover = from == 0 || to == 0)
+                    from = to
+                }
+            }
             val scope = rememberCoroutineScope()
             val goTo: (Int) -> Unit = { view -> scope.launch { pager.animateScrollToPage(view + 1) } }
             val context = LocalContext.current
@@ -195,7 +211,8 @@ fun ReaderScreen(
                 onRestart = { goTo(1) },
                 onShare = share,
                 onColor = { viewModel.openColoring(state.lastView) }.takeUnless { state.calm },
-                onPassport = viewModel::openPassport
+                onPassport = viewModel::openPassport,
+                onPoke = viewModel::poke
             )
             val view = pager.currentPage - 1
 
@@ -206,6 +223,8 @@ fun ReaderScreen(
                     points = state.points,
                     onBack = onBack,
                     onStudio = viewModel::openStudio,
+                    sound = state.sound,
+                    onSound = viewModel::toggleSound,
                     bedtime = state.tonight?.let { Bedtime.progress(view, it) },
                     modifier = Modifier.alpha(if (state.calm) 0.62f else 1f)
                 )
@@ -230,7 +249,7 @@ fun ReaderScreen(
                     when (val shown = index - 1) {
                         Reading.COVER -> CoverPage(book, onOpen = { goTo(Reading.TITLE) })
 
-                        Reading.TITLE -> TitlePage(book, state.resumePage, onResume = { goTo(state.resumePage) })
+                        Reading.TITLE -> TitlePage(book, state.resumePage, onResume = { goTo(state.resumePage) }, onPoke = viewModel::poke)
 
                         state.lastView -> FinalePage(
                             book = book,
@@ -263,7 +282,8 @@ fun ReaderScreen(
                                     highlight = if (pager.settledPage - 1 == shown) state.readAlong.highlight else -1,
                                     calm = state.calm,
                                     onColor = { viewModel.openColoring(shown) }.takeUnless { state.calm },
-                                    onTrace = { viewModel.openTrace(shown) }
+                                    onTrace = { viewModel.openTrace(shown) },
+                                    onPoke = viewModel::poke
                                 ),
                                 onAnswer = { idx -> viewModel.answer(shown, idx) }
                             )
@@ -361,6 +381,8 @@ private fun TopBar(
     points: Int,
     onBack: () -> Unit,
     onStudio: () -> Unit,
+    sound: Boolean,
+    onSound: () -> Unit,
     bedtime: Pair<Int, Int>?,
     modifier: Modifier = Modifier
 ) {
@@ -432,6 +454,24 @@ private fun TopBar(
                         modifier = Modifier.size(20.dp)
                     )
                 }
+            }
+            // Varaqlash ovozi: the page sound and the chimes, on or off.
+            val soundLabel = uiText(if (sound) "Varaqlash Ovozi: Yoqilgan" else "Varaqlash Ovozi: O'chiq")
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (sound) SoundOnBg else SoundOffBg)
+                    .semantics { stateDescription = soundLabel }
+                    .clickable(onClickLabel = soundLabel, role = Role.Switch, onClick = onSound),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (sound) Icons.AutoMirrored.Rounded.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
+                    contentDescription = soundLabel,
+                    tint = if (sound) SoundOnText else SoundOffText,
+                    modifier = Modifier.size(20.dp)
+                )
             }
             PointsChip(points)
         }

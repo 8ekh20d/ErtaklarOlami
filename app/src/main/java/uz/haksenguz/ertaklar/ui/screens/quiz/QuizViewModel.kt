@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uz.haksenguz.ertaklar.core.scoring.Scoring
+import uz.haksenguz.ertaklar.data.audio.Sfx
 import uz.haksenguz.ertaklar.data.content.ContentRepository
 import uz.haksenguz.ertaklar.data.models.Question
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
@@ -48,7 +49,8 @@ class QuizViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val content: ContentRepository,
     private val profiles: ProfileRepository,
-    private val progress: ProgressRepository
+    private val progress: ProgressRepository,
+    private val sfx: Sfx
 ) : ViewModel() {
 
     private val key = savedState.toRoute<QuizRoute>().key
@@ -83,6 +85,7 @@ class QuizViewModel @Inject constructor(
         viewModelScope.launch {
             val profile = profiles.active.filterNotNull().first()
             val first = progress.passQuiz(profile.id, key)
+            sfx.chime(happy = true)
             _state.update { it.copy(result = QuizResult.Right(first)) }
             delay(2_200)
             done.send(Unit)

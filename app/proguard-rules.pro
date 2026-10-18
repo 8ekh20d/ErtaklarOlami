@@ -1,21 +1,19 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# The bundled JSON (books, Korean helper, passport, map, holidays, i18n) and
+# voice packs are read into these classes by kotlinx-serialization; keep their
+# generated serializers and the names the JSON uses.
+-keepattributes *Annotation*, InnerClasses
+-keep,includedescriptorclasses class uz.haksenguz.ertaklar.data.models.**$$serializer { *; }
+-keepclassmembers class uz.haksenguz.ertaklar.data.models.** {
+    *** Companion;
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keepclassmembers @kotlinx.serialization.Serializable class uz.haksenguz.ertaklar.** {
+    <fields>;
+}
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Navigation's type-safe routes are found by their serializers too.
+-keep,includedescriptorclasses class uz.haksenguz.ertaklar.navigation.**$$serializer { *; }
+-keepclassmembers class uz.haksenguz.ertaklar.navigation.** {
+    *** Companion;
+    kotlinx.serialization.KSerializer serializer(...);
+}

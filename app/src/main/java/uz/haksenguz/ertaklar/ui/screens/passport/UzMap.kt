@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -298,6 +299,7 @@ private fun DrawScope.label(
             topLeft = Offset(left, top),
             drawStyle = Stroke(width = haloWidth * px / 17f, join = StrokeJoin.Round)
         )
-        drawText(layout, color = color, topLeft = Offset(left, top))
+        // Fill said outright: the paint would otherwise keep the halo's stroke.
+        drawText(layout, color = color, topLeft = Offset(left, top), drawStyle = Fill)
     }
 }
