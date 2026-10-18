@@ -16,3 +16,7 @@ local.properties
 
 # Local-only tooling (renders the bundled pictures and data)
 /tools/export/
+
+# Release signing: the key and its password never go into git
+/keystore/
+/keystore.properties
