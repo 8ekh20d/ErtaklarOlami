@@ -194,7 +194,8 @@ fun ReaderScreen(
                 onOrder = viewModel::openOrder,
                 onRestart = { goTo(1) },
                 onShare = share,
-                onColor = { viewModel.openColoring(state.lastView) }.takeUnless { state.calm }
+                onColor = { viewModel.openColoring(state.lastView) }.takeUnless { state.calm },
+                onPassport = viewModel::openPassport
             )
             val view = pager.currentPage - 1
 
@@ -238,7 +239,8 @@ fun ReaderScreen(
                             actions = actions,
                             koMoral = state.korean?.moral?.takeIf { it.isNotEmpty() },
                             koShown = state.koView == shown,
-                            onToggleKorean = { viewModel.toggleKorean(shown) }
+                            onToggleKorean = { viewModel.toggleKorean(shown) },
+                            place = state.place
                         )
 
                         else -> {
@@ -301,7 +303,7 @@ fun ReaderScreen(
                 GlossCard(term, meaning, onSay = viewModel::sayGloss, onClose = viewModel::closeGloss)
             }
         }
-        state.goodnight?.let { g -> GoodnightScreen(g.name, g.next, onLeave = onBack) }
+        state.goodnight?.let { g -> GoodnightScreen(g.name, g.next, onLeave = onBack, stamp = g.stamp, stampedAt = g.stampedAt) }
         ToastHost(
             toast,
             Modifier

@@ -43,3 +43,7 @@ data object DictionaryRoute
 /** A game with the child's words: "listen", "match" or "spell". */
 @Serializable
 data class DictGameRoute(val game: String)
+
+/** "🗺️ Mening pasportim"; [region] opens that place's card too (from the end of a book). */
+@Serializable
+data class PassportRoute(val region: String? = null)

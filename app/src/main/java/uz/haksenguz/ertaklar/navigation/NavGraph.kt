@@ -14,6 +14,7 @@ import uz.haksenguz.ertaklar.ui.screens.dictgames.SpellGameScreen
 import uz.haksenguz.ertaklar.ui.screens.dictionary.DictionaryScreen
 import uz.haksenguz.ertaklar.ui.screens.library.LibraryScreen
 import uz.haksenguz.ertaklar.ui.screens.ordergame.OrderGameScreen
+import uz.haksenguz.ertaklar.ui.screens.passport.PassportScreen
 import uz.haksenguz.ertaklar.ui.screens.quiz.QuizScreen
 import uz.haksenguz.ertaklar.ui.screens.reader.ReaderScreen
 import uz.haksenguz.ertaklar.ui.screens.studio.StudioScreen
@@ -27,7 +28,14 @@ fun NavGraph() {
             LibraryScreen(
                 onOpenBook = { key, resume -> nav.navigate(ReaderRoute(key, resume)) },
                 onBedtime = { key -> nav.navigate(ReaderRoute(key, bedtime = true)) },
-                onDictionary = { nav.navigate(DictionaryRoute) }
+                onDictionary = { nav.navigate(DictionaryRoute) },
+                onPassport = { nav.navigate(PassportRoute()) }
+            )
+        }
+        composable<PassportRoute> {
+            PassportScreen(
+                onBack = { nav.popBackStack() },
+                onOpenBook = { key -> nav.navigate(ReaderRoute(key, resume = true)) }
             )
         }
         composable<DictionaryRoute> {

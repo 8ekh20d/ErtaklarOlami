@@ -3,6 +3,7 @@ package uz.haksenguz.ertaklar.ui.screens.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import java.time.LocalTime
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import uz.haksenguz.ertaklar.core.holidays.Holidays
 import uz.haksenguz.ertaklar.core.levels.Levels
 import uz.haksenguz.ertaklar.core.scoring.Scoring
 import uz.haksenguz.ertaklar.data.content.ContentRepository
@@ -25,6 +27,8 @@ import uz.haksenguz.ertaklar.data.models.BookRecord
 import uz.haksenguz.ertaklar.data.models.Category
 import uz.haksenguz.ertaklar.data.models.Profile
 import uz.haksenguz.ertaklar.data.repository.DictionaryRepository
+import uz.haksenguz.ertaklar.data.repository.HolidayRepository
+import uz.haksenguz.ertaklar.data.repository.PassportRepository
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
 import uz.haksenguz.ertaklar.data.repository.SettingsRepository
@@ -54,7 +58,9 @@ data class Hero(
     val continueReading: Boolean,
     /** The page reached, while a book is in progress. */
     val resumePage: Int?,
-    val pages: Int
+    val pages: Int,
+    /** The book's holiday when it is near: ("🎉 8 kundan keyin bayram:", "Hangul kuni"). */
+    val holiday: Pair<String, String>? = null
 )
 
 data class CategoryTab(val category: Category, val count: Int)
@@ -76,7 +82,9 @@ data class BookCard(
     /** Half-read: the page reached. */
     val progressPage: Int?,
     /** Finished: its stars. */
-    val stars: Int?
+    val stars: Int?,
+    /** A holiday book's next date ("🎉 9-oktabr") and the holiday's name. */
+    val holiday: Pair<String, String>? = null
 )
 
 /** The library: which books show, the banner's book and each card's status. */
@@ -87,8 +95,18 @@ class LibraryViewModel @Inject constructor(
     private val profiles: ProfileRepository,
     progress: ProgressRepository,
     private val settings: SettingsRepository,
-    dictionary: DictionaryRepository
+    dictionary: DictionaryRepository,
+    passport: PassportRepository,
+    private val holidayRepo: HolidayRepository
 ) : ViewModel() {
+
+    /** Read before the library, so the first cards already know their holidays. */
+    @Volatile
+    private var holidays: Holidays? = null
+
+    /** The places stamped, of all ("Pasportim (3/15)"). */
+    val stamps: StateFlow<String> = passport.snapshot.map { "${it.stamps.size}/${it.passport.regions.size}" }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "0/15")
 
     /** How many words are in the child's dictionary ("Mening lug'atim (12)"). */
     val words: StateFlow<Int> = dictionary.entries.map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
@@ -117,6 +135,7 @@ class LibraryViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             profiles.ensureActive()
+            holidays = holidayRepo.holidays()
             library.value = content.library()
         }
     }
@@ -161,6 +180,7 @@ class LibraryViewModel @Inject constructor(
         val shown = lib.books.filter { cat.matches(it) && onShelf(it) }
         val tabs = Category.entries.map { c -> CategoryTab(c, lib.books.count { c.matches(it) && onShelf(it) }) }
 
+        val today = LocalDate.now()
         val cards = shown.map { book ->
             val rec = records[book.key]
             val total = book.pages.size
@@ -177,7 +197,8 @@ class LibraryViewModel @Inject constructor(
                 locked = isLocked(book),
                 twinTitle = book.twin?.let { lib[it]?.title },
                 progressPage = rec?.page?.takeIf { it >= 1 },
-                stars = if (rec != null && rec.page < 1 && rec.finished) Scoring.score(book, rec.answers).stars else null
+                stars = if (rec != null && rec.page < 1 && rec.finished) Scoring.score(book, rec.answers).stars else null,
+                holiday = holidays?.let { h -> h.upcoming(book.holidays, today)?.let { "🎉 ${h.dateLabel(it.date)}" to it.name } }
             )
         }
 
@@ -206,17 +227,19 @@ class LibraryViewModel @Inject constructor(
         val inProgress = profile.lastBook?.takeIf { lib[it] != null && (lastRec?.page ?: 0) >= 1 }
         val key = inProgress ?: suggestedBook(lib, records, myShelf, isLocked) ?: return null
         val book = lib[key] ?: return null
+        val near = holidays?.soon(book.holidays, LocalDate.now())
         return Hero(
             key = key,
             title = book.title,
             cover = book.cover,
             continueReading = inProgress != null,
             resumePage = if (inProgress != null) lastRec?.page else null,
-            pages = book.pages.size
+            pages = book.pages.size,
+            holiday = near?.let { Holidays.whenText(it.days) to it.name }
         )
     }
 
-    /** The first book on the child's shelf they haven't finished (holidays come with the passport phase). */
+    /** With nothing in progress: the book of a holiday that is near, else the first book on the child's shelf they haven't finished. */
     private fun suggestedBook(
         lib: Library,
         records: Map<String, BookRecord>,
@@ -226,6 +249,13 @@ class LibraryViewModel @Inject constructor(
         val open = lib.books.filterNot(isLocked)
         val fits = { b: Book -> shelf == null || Levels.fits(b.age, shelf) }
         val unread = { b: Book -> records[b.key]?.finished != true }
+        val today = LocalDate.now()
+        holidays?.let { h ->
+            open.filter { fits(it) && unread(it) }
+                .mapNotNull { b -> h.soon(b.holidays, today)?.let { b to it.days } }
+                .minByOrNull { it.second }
+                ?.let { return it.first.key }
+        }
         return (open.firstOrNull { fits(it) && unread(it) } ?: open.firstOrNull(fits) ?: open.firstOrNull())?.key
     }
 }

@@ -1,0 +1,23 @@
+The map of Uzbekistan in the culture passport (its regions, the neighbouring
+countries and the small map of Korea) is drawn from Natural Earth data.
+
+Natural Earth: public domain, naturalearthdata.com
+
+Region borders taken from datamaps 0.5.10, MIT License,
+Copyright (c) 2012 Mark DiMarco:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions: The above copyright
+notice and this permission notice shall be included in all copies or
+substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS",
+WITHOUT WARRANTY OF ANY KIND.
+
+Country borders taken from world-atlas 2.0.2, ISC License,
+Copyright 2013-2019 Michael Bostock:
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES.

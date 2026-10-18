@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +27,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -32,8 +37,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import uz.haksenguz.ertaklar.core.passport.Passport
 import uz.haksenguz.ertaklar.core.scoring.Scoring
 import uz.haksenguz.ertaklar.data.models.Book
+import uz.haksenguz.ertaklar.data.models.Region
+import uz.haksenguz.ertaklar.ui.components.StampImage
 import uz.haksenguz.ertaklar.ui.text.storyText
 import uz.haksenguz.ertaklar.ui.text.uiText
 import uz.haksenguz.ertaklar.ui.theme.Amber500
@@ -62,8 +70,13 @@ data class FinaleActions(
     val onRestart: () -> Unit,
     val onShare: () -> Unit,
     /** 🎨: the last picture as a colouring page. */
-    val onColor: (() -> Unit)? = null
+    val onColor: (() -> Unit)? = null,
+    /** The stamp in the corner: the passport, at this place. */
+    val onPassport: () -> Unit = {}
 )
+
+private val PassportText = Color(0xFF1D4ED8)
+private val PassportBg = Color(0xFFEFF6FF)
 
 /** "Tamom!": the last picture with confetti, the stars, the moral and what to do next. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -77,23 +90,56 @@ fun FinalePage(
     /** The moral in Korean, when the book has it; [koShown] while 🇰🇷 is on. */
     koMoral: String? = null,
     koShown: Boolean = false,
-    onToggleKorean: () -> Unit = {}
+    onToggleKorean: () -> Unit = {},
+    /** The passport place this book takes the child to. */
+    place: Region? = null
 ) {
     BookSheet(modifier) {
-        PageHead(chip = null, running = storyText(book.title), chipFirst = false)
-        PageArt(book.endImage, contentDescription = uiText("Tamom!"), onColor = actions.onColor, colorAt = Alignment.BottomEnd) {
-            Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.TopCenter) {
-                Text(
-                    uiText("Tamom!"),
-                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
-                    color = Color.White,
-                    modifier = Modifier
-                        .rotate(-3f)
-                        .shadow(8.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(TamomFrom, TamomTo)))
-                        .padding(horizontal = 22.dp, vertical = 4.dp)
-                )
+        Box {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                PageHead(chip = null, running = storyText(book.title), chipFirst = false)
+                PageArt(book.endImage, contentDescription = uiText("Tamom!"), onColor = actions.onColor, colorAt = Alignment.BottomEnd) {
+                    Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.TopCenter) {
+                        Text(
+                            uiText("Tamom!"),
+                            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
+                            color = Color.White,
+                            modifier = Modifier
+                                .rotate(-3f)
+                                .shadow(8.dp, CircleShape)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(listOf(TamomFrom, TamomTo)))
+                                .padding(horizontal = 22.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+            // The place this book took the child to, stamped in the page's corner.
+            place?.let { r ->
+                val where = uiText("📍 Bu ertak seni ${Passport.dative(r.name)} olib bordi!")
+                Column(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 2.dp)
+                        .rotate(5f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .semantics { contentDescription = where }
+                        .clickable(role = Role.Button, onClick = actions.onPassport),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    StampImage(r, Modifier.size(86.dp))
+                    Text(
+                        uiText("🗺️ Pasport"),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = PassportText,
+                        modifier = Modifier
+                            .offset(y = (-4).dp)
+                            .clip(CircleShape)
+                            .background(PassportBg)
+                            .padding(horizontal = 8.dp, vertical = 1.dp)
+                    )
+                }
             }
         }
         Text(

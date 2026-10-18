@@ -9,8 +9,16 @@ package uz.haksenguz.ertaklar.core.i18n
  */
 class KoreanMenus(
     private val exact: Map<String, String>,
-    private val patterns: List<Pattern>
+    private val patterns: List<Pattern>,
+    private val places: Places = Places()
 ) {
+    /** Passport names in Korean: places by name and by their "to" form ("Xorazmga"), and stickers. */
+    class Places(
+        val byName: Map<String, String> = emptyMap(),
+        val byDative: Map<String, String> = emptyMap(),
+        val stickers: Map<String, String> = emptyMap()
+    )
+
     /** One pattern: a regex over the Uzbek text, and either a Korean template ($1, $2…) or a named function. */
     class Pattern(val re: Regex, val ko: String?, val fn: String?)
 
@@ -37,6 +45,12 @@ class KoreanMenus(
         // "✓ 👵 Buvijon: 12 ta sahifa qo'shildi." (and a warning when the phone may not play them)
         "voicePackImported" -> "✓ ${g[1]}: ${g[2]}쪽을 추가했어요." +
             if (g.getOrElse(3) { "" }.isNotEmpty()) " 주의: 이 휴대폰에서는 이 녹음이 재생되지 않을 수도 있어요." else ""
+
+        "placeByDative" -> "📍 이 이야기를 따라 ${places.byDative[g[1]] ?: g[1]}에 다녀왔어요!"
+
+        "placeByName" -> "🗺️ 새 도장: ${places.byName[g[1]] ?: g[1]}!"
+
+        "stickerByName" -> "🎁 새 스티커: ${places.stickers[g[1]] ?: g[1]}!"
 
         else -> null
     }

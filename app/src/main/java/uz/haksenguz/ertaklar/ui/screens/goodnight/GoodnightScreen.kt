@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,7 +39,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import uz.haksenguz.ertaklar.data.models.Region
 import uz.haksenguz.ertaklar.ui.components.AssetImage
+import uz.haksenguz.ertaklar.ui.components.StampImage
 import uz.haksenguz.ertaklar.ui.text.storyText
 import uz.haksenguz.ertaklar.ui.text.uiText
 
@@ -48,6 +52,7 @@ private val Lavender = Color(0xFFC7D2FE)
 private val Periwinkle = Color(0xFFA5B4FC)
 private val ButtonBorder = Color(0xFF4C5AA0)
 private val ButtonText = Color(0xFFE0E7FF)
+private val StampBg = Color(0xFFFDF6E3)
 
 /** After this long the screen fades nearly to dark; a tap wakes it. */
 private const val FADE_AFTER_MS = 15_000L
@@ -57,7 +62,15 @@ private const val FADE_AFTER_MS = 15_000L
  * good night to the child, and where tomorrow begins. It slowly fades to dark.
  */
 @Composable
-fun GoodnightScreen(name: String, next: String, onLeave: () -> Unit, modifier: Modifier = Modifier) {
+fun GoodnightScreen(
+    name: String,
+    next: String,
+    onLeave: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** A place the finished book has just stamped, and when. */
+    stamp: Region? = null,
+    stampedAt: Long = 0
+) {
     var faded by remember { mutableStateOf(false) }
     var wakes by remember { mutableIntStateOf(0) }
     LaunchedEffect(wakes) {
@@ -112,6 +125,25 @@ fun GoodnightScreen(name: String, next: String, onLeave: () -> Unit, modifier: M
                 .alpha(alpha)
                 .widthIn(max = 480.dp)
         )
+        stamp?.let { r ->
+            StampImage(
+                r,
+                Modifier
+                    .alpha(alpha)
+                    .padding(top = 4.dp)
+                    .size(104.dp)
+                    .clip(CircleShape)
+                    .background(StampBg)
+                    .padding(4.dp),
+                date = stampedAt
+            )
+            Text(
+                uiText("🗺️ Yangi muhr: ${r.name}!"),
+                fontWeight = FontWeight.ExtraBold,
+                color = Moonlight,
+                modifier = Modifier.alpha(alpha)
+            )
+        }
         Text(
             uiText("📚 Kutubxonaga qaytish"),
             color = ButtonText,

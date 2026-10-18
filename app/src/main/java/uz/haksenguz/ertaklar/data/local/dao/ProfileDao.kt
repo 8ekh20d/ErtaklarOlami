@@ -30,6 +30,10 @@ interface ProfileDao {
     @Query("UPDATE profiles SET points = points + :n WHERE id = :id")
     suspend fun addPoints(id: String, n: Int)
 
+    /** Takes [n] points only if there are that many; returns the rows changed (0 when not enough). */
+    @Query("UPDATE profiles SET points = points - :n WHERE id = :id AND points >= :n AND :n > 0")
+    suspend fun spendPoints(id: String, n: Int): Int
+
     @Query("UPDATE profiles SET last_book = :book WHERE id = :id")
     suspend fun setLastBook(id: String, book: String?)
 }

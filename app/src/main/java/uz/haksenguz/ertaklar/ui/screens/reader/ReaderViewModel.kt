@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,8 +31,10 @@ import uz.haksenguz.ertaklar.data.content.ContentRepository
 import uz.haksenguz.ertaklar.data.models.Book
 import uz.haksenguz.ertaklar.data.models.BookRecord
 import uz.haksenguz.ertaklar.data.models.KoreanBook
+import uz.haksenguz.ertaklar.data.models.Region
 import uz.haksenguz.ertaklar.data.models.Voice
 import uz.haksenguz.ertaklar.data.repository.GateRepository
+import uz.haksenguz.ertaklar.data.repository.PassportRepository
 import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
 import uz.haksenguz.ertaklar.data.repository.SettingsRepository
@@ -39,11 +42,15 @@ import uz.haksenguz.ertaklar.data.repository.VoiceRepository
 import uz.haksenguz.ertaklar.navigation.ColoringRoute
 import uz.haksenguz.ertaklar.navigation.CompareRoute
 import uz.haksenguz.ertaklar.navigation.OrderRoute
+import uz.haksenguz.ertaklar.navigation.PassportRoute
 import uz.haksenguz.ertaklar.navigation.ReaderRoute
 import uz.haksenguz.ertaklar.navigation.TraceRoute
 
-/** "Xayrli tun": the good-night screen after tonight's last page. [next] says where tomorrow begins. */
-data class Goodnight(val name: String, val next: String)
+/**
+ * "Xayrli tun": the good-night screen after tonight's last page. [next] says
+ * where tomorrow begins; [stamp] is a place the finished book has just stamped.
+ */
+data class Goodnight(val name: String, val next: String, val stamp: Region? = null, val stampedAt: Long = 0)
 
 /** A book opened for reading. */
 data class ReaderUiState(
@@ -70,7 +77,9 @@ data class ReaderUiState(
     val readAlong: ReadAlongState = ReadAlongState(),
     /** At bedtime: tonight's pages. The questions rest, and past the last one it is good night. */
     val tonight: Bedtime.Tonight? = null,
-    val goodnight: Goodnight? = null
+    val goodnight: Goodnight? = null,
+    /** The passport place this book takes the child to. */
+    val place: Region? = null
 ) {
     val pages get() = book?.pages?.size ?: 0
     val lastView get() = Reading.lastView(pages)
@@ -117,7 +126,8 @@ class ReaderViewModel @Inject constructor(
     private val tts: KoreanTts,
     private val gate: GateRepository,
     private val voiceRepo: VoiceRepository,
-    private val player: ClipPlayer
+    private val player: ClipPlayer,
+    private val passport: PassportRepository
 ) : ViewModel() {
 
     private val route = savedState.toRoute<ReaderRoute>()
@@ -141,7 +151,8 @@ class ReaderViewModel @Inject constructor(
         val startView: Int,
         val twin: Pair<String, String>?,
         val korean: KoreanBook?,
-        val tonight: Bedtime.Tonight?
+        val tonight: Bedtime.Tonight?,
+        val place: Region?
     ) {
         val gloss = korean?.let { Gloss(it.forms) }
     }
@@ -170,7 +181,8 @@ class ReaderViewModel @Inject constructor(
                 voiceId = (l.voices.firstOrNull { it.id == h.voiceSetting } ?: l.voices.firstOrNull())?.id,
                 readAlong = l.readAlong,
                 tonight = o.tonight,
-                goodnight = l.goodnight
+                goodnight = l.goodnight,
+                place = o.place
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReaderUiState())
@@ -209,7 +221,8 @@ class ReaderViewModel @Inject constructor(
             readAlong = ReadAlongController(viewModelScope, player, voiceRepo, book, host).also { r ->
                 viewModelScope.launch { r.state.collect { readAlongState.value = it } }
             }
-            opened.value = Opened(profile.id, book, start, twin, library.korean[book.key], tonight)
+            val place = passport.passport().regionOf(book)
+            opened.value = Opened(profile.id, book, start, twin, library.korean[book.key], tonight, place)
             // Someone has read this book aloud: say so, and at bedtime their voice reads on by itself.
             val first = state.filterNotNull().first { !it.loading }
             val voice = first.voice
@@ -238,8 +251,15 @@ class ReaderViewModel @Inject constructor(
         this.view = view
         readAlong?.onPageSettled(view)
         viewModelScope.launch {
+            val fresh = if (view == Reading.lastView(o.book.pages.size)) freshPlace(o) else null
             val settled = progress.settle(o.profileId, o.book, view) ?: return@launch
-            if (settled.firstFinish && o.twin != null) events.send(ReaderEvent.Toast("🔓 Yangi ertak ochildi: «${o.twin.second}»!"))
+            if (!settled.firstFinish) return@launch
+            if (o.twin != null) events.send(ReaderEvent.Toast("🔓 Yangi ertak ochildi: «${o.twin.second}»!"))
+            // The first book finished there stamps its place in the passport.
+            if (fresh != null) {
+                if (o.twin != null) delay(2_000)
+                events.send(ReaderEvent.Toast("🗺️ Yangi muhr: ${fresh.name}!"))
+            }
         }
     }
 
@@ -307,16 +327,34 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             val name = profiles.active.filterNotNull().first().name
             val pages = o.book.pages.size
+            var stamp: Region? = null
             val next = if (tonight.limit >= pages) {
-                // The whole book is read: it counts as finished.
+                // The whole book is read: it counts as finished, and may stamp the passport.
+                stamp = freshPlace(o)
                 progress.settle(o.profileId, o.book, Reading.lastView(pages))
                 "Ertak tugadi! Ertaga yangisini o'qiymiz."
             } else {
                 progress.rememberPage(o.profileId, o.book, tonight.limit + 1)
                 "Ertaga shu yerdan davom etamiz: «${o.book.title}», ${tonight.limit + 1}-sahifa."
             }
-            goodnight.value = Goodnight(name, next)
+            goodnight.value = Goodnight(name, next, stamp, System.currentTimeMillis())
         }
+    }
+
+    /** The book's place, if finishing the book now would give it its first stamp. */
+    private suspend fun freshPlace(o: Opened): Region? {
+        val place = o.place ?: return null
+        val records = progress.records(o.profileId).first()
+        if (records[o.book.key]?.finished == true) return null
+        val stamps = passport.passport().stamps(content.library().books, records)
+        return place.takeIf { it.id !in stamps }
+    }
+
+    /** The stamp on the last page: the passport, at this book's place. */
+    fun openPassport() {
+        val place = opened.value?.place ?: return
+        readAlong?.stop()
+        viewModelScope.launch { events.send(ReaderEvent.OpenGame(PassportRoute(place.id))) }
     }
 
     // ---------- Korean helper ----------

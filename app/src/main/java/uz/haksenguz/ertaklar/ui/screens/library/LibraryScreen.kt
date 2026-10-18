@@ -62,6 +62,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -106,6 +108,9 @@ import uz.haksenguz.ertaklar.ui.theme.Sky800
 
 private val Orange500 = Color(0xFFF97316)
 private val EveningGlow = Color(0xFFFDE68A)
+private val HolidayBg = Color(0xFFFFE4E6)
+private val HolidayText = Color(0xFFBE123C)
+private val HolidayBanner = Color(0x40E11D48)
 
 /** The library: banner, category tabs, age shelves and the book cards. */
 @Composable
@@ -113,17 +118,18 @@ fun LibraryScreen(
     onOpenBook: (key: String, resume: Boolean) -> Unit,
     onBedtime: (key: String) -> Unit,
     onDictionary: () -> Unit,
+    onPassport: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val words by viewModel.words.collectAsStateWithLifecycle()
+    val stamps by viewModel.stamps.collectAsStateWithLifecycle()
     val display = LocalDisplay.current
     val toast = rememberToastState()
     var profilesOpen by rememberSaveable { mutableStateOf(false) }
     var bedtimeOpen by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    val later: () -> Unit = { toast.show(display.ui("Bu bo'lim tez orada qo'shiladi")) }
     val share: () -> Unit = {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -169,7 +175,8 @@ fun LibraryScreen(
                         onBedtime = { bedtimeOpen = true },
                         words = words,
                         onDictionary = onDictionary,
-                        onPassport = later,
+                        stamps = stamps,
+                        onPassport = onPassport,
                         onShare = share,
                         onCategory = viewModel::selectCategory,
                         onShelf = viewModel::selectShelf,
@@ -216,6 +223,7 @@ private fun LazyGridScope.libraryContent(
     onBedtime: () -> Unit,
     words: Int,
     onDictionary: () -> Unit,
+    stamps: String,
     onPassport: () -> Unit,
     onShare: () -> Unit,
     onCategory: (Category) -> Unit,
@@ -225,7 +233,7 @@ private fun LazyGridScope.libraryContent(
     val full: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
     state.hero?.let { hero ->
         item(span = full, key = "hero") {
-            HeroBanner(hero, state.evening, words, onHero, onBedtime, onDictionary, onPassport, onShare)
+            HeroBanner(hero, state.evening, words, stamps, onHero, onBedtime, onDictionary, onPassport, onShare)
         }
     }
     item(span = full, key = "tabs") { CategoryTabs(state.tabs, state.category, onCategory) }
@@ -301,6 +309,7 @@ private fun HeroBanner(
     hero: Hero,
     evening: Boolean,
     words: Int,
+    stamps: String,
     onOpen: () -> Unit,
     onBedtime: () -> Unit,
     onDictionary: () -> Unit,
@@ -366,6 +375,18 @@ private fun HeroBanner(
                     fontSize = 16.sp
                 )
             }
+            hero.holiday?.let { (whenText, name) ->
+                Text(
+                    "${uiText(whenText)} ${uiText(name)}",
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(HolidayBanner)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
             hero.resumePage?.let { page ->
                 Text(
                     "📖 ${storyText(hero.title)} · $page / ${hero.pages}",
@@ -381,7 +402,7 @@ private fun HeroBanner(
             ) {
                 BannerButton("🌙", "Uxlash vaqti", glow = evening, onClick = onBedtime)
                 BannerButton("📖", "Mening lug'atim", count = words, onClick = onDictionary)
-                BannerButton("🗺️", "Pasportim", onClick = onPassport)
+                BannerButton("🗺️", "Pasportim", suffix = stamps, onClick = onPassport)
                 BannerButton(null, "Ulashish", onClick = onShare)
             }
         }
@@ -389,7 +410,14 @@ private fun HeroBanner(
 }
 
 @Composable
-private fun BannerButton(emoji: String?, label: String, glow: Boolean = false, count: Int? = null, onClick: () -> Unit) {
+private fun BannerButton(
+    emoji: String?,
+    label: String,
+    glow: Boolean = false,
+    count: Int? = null,
+    suffix: String? = null,
+    onClick: () -> Unit
+) {
     Row(
         Modifier
             .height(40.dp)
@@ -408,7 +436,15 @@ private fun BannerButton(emoji: String?, label: String, glow: Boolean = false, c
         } else {
             Icon(Icons.Rounded.Share, null, tint = Color.White, modifier = Modifier.size(18.dp))
         }
-        Text(uiText(label) + (count?.let { " ($it)" } ?: ""), color = Color.White, style = MaterialTheme.typography.labelLarge)
+        Text(
+            uiText(label) + (
+                count?.let {
+                    " ($it)"
+                } ?: ""
+                ) + (suffix?.let { " ($it)" } ?: ""),
+            color = Color.White,
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }
 
@@ -483,6 +519,10 @@ private fun BookCardView(card: BookCard, showKorean: Boolean, onClick: () -> Uni
                 if (card.genre.isNotEmpty()) TagChip(uiText(card.genre), Orange100, Brand700)
                 if (card.ageLabel.isNotEmpty()) TagChip(uiText(card.ageLabel), Sky100, Sky800)
                 if (card.isNew) TagChip(uiText("Yangi"), Emerald500, Color.White)
+                card.holiday?.let { (date, name) ->
+                    val label = uiText(name)
+                    TagChip(uiText(date), HolidayBg, HolidayText, Modifier.semantics { contentDescription = label })
+                }
             }
             Text(
                 storyText(card.title),
