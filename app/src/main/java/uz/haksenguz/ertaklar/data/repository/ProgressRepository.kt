@@ -74,6 +74,34 @@ class ProgressRepository @Inject constructor(
         true
     }
 
+    /** "Voqealar tartibi" won; its points come only the first time. Returns whether it was the first. */
+    suspend fun winOrder(
+        profileId: String,
+        key: String
+    ): Boolean = once(profileId, key, Scoring.ORDER, { it.order }) { it.copy(order = true) }
+
+    /** "Farqlarni toping" won; its points come only the first time. */
+    suspend fun winCompare(profileId: String, key: String): Boolean =
+        once(profileId, key, Scoring.COMPARE, { it.compare }) { it.copy(compare = true) }
+
+    /** An Alifbo [letter] traced; its points come only the first time. */
+    suspend fun traced(profileId: String, key: String, letter: String): Boolean =
+        once(profileId, key, Scoring.TRACE, { letter in it.traced }) { it.copy(traced = it.traced + letter) }
+
+    private suspend fun once(
+        profileId: String,
+        key: String,
+        points: Int,
+        done: (BookRecord) -> Boolean,
+        mark: (BookRecord) -> BookRecord
+    ): Boolean = mutex.withLock {
+        val current = load(profileId, key)
+        if (done(current)) return false
+        dao.upsert(mark(current).toEntity(profileId))
+        profileDao.addPoints(profileId, points)
+        true
+    }
+
     private suspend fun load(profileId: String, key: String): BookRecord = dao.record(profileId, key)?.toModel() ?: BookRecord(key)
 
     private fun BookRecordEntity.toModel() = BookRecord(

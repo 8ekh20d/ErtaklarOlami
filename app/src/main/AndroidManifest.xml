@@ -4,6 +4,11 @@
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Saving a coloured picture to the gallery; only needed before Android 10. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <!-- The phone's text-to-speech engine, for Korean word meanings. -->
     <queries>
         <intent>

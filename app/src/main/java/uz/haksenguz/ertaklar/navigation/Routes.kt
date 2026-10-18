@@ -16,3 +16,19 @@ data class QuizRoute(val key: String)
 /** The recording studio for a book, opened at [page]. */
 @Serializable
 data class StudioRoute(val key: String, val page: Int = 1)
+
+/** "🎨 Bo'yash": the picture of story page [view] (or of the ending) as a colouring page; [reveal] for a guessed riddle's picture. */
+@Serializable
+data class ColoringRoute(val key: String, val view: Int, val reveal: Boolean = false)
+
+/** "🧩 Voqealar tartibi": four pictures of the book to put in order. */
+@Serializable
+data class OrderRoute(val key: String)
+
+/** "🔍 Farqlarni toping": a twin tale against the Uzbek tale it pairs with. */
+@Serializable
+data class CompareRoute(val key: String)
+
+/** "✍️ Harfni yozing": tracing the letter of Alifbo page [view]. */
+@Serializable
+data class TraceRoute(val key: String, val view: Int)

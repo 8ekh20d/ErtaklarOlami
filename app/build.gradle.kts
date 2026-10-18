@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.print)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.serialization.json)

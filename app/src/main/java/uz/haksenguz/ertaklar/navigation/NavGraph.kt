@@ -4,10 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import uz.haksenguz.ertaklar.ui.screens.coloring.ColoringScreen
+import uz.haksenguz.ertaklar.ui.screens.compare.CompareScreen
 import uz.haksenguz.ertaklar.ui.screens.library.LibraryScreen
+import uz.haksenguz.ertaklar.ui.screens.ordergame.OrderGameScreen
 import uz.haksenguz.ertaklar.ui.screens.quiz.QuizScreen
 import uz.haksenguz.ertaklar.ui.screens.reader.ReaderScreen
 import uz.haksenguz.ertaklar.ui.screens.studio.StudioScreen
+import uz.haksenguz.ertaklar.ui.screens.trace.TraceScreen
 
 @Composable
 fun NavGraph() {
@@ -25,9 +29,14 @@ fun NavGraph() {
                 // A twin tale opens in place of the one just finished.
                 onOpenBook = { key -> nav.navigate(ReaderRoute(key)) { popUpTo<ReaderRoute> { inclusive = true } } },
                 onOpenQuiz = { key -> nav.navigate(QuizRoute(key)) },
-                onOpenStudio = { key, page -> nav.navigate(StudioRoute(key, page)) }
+                onOpenStudio = { key, page -> nav.navigate(StudioRoute(key, page)) },
+                onPlay = { route -> nav.navigate(route) }
             )
         }
+        composable<ColoringRoute> { ColoringScreen(onBack = { nav.popBackStack() }) }
+        composable<OrderRoute> { OrderGameScreen(onBack = { nav.popBackStack() }) }
+        composable<CompareRoute> { CompareScreen(onBack = { nav.popBackStack() }) }
+        composable<TraceRoute> { TraceScreen(onBack = { nav.popBackStack() }) }
         composable<StudioRoute> {
             StudioScreen(onBack = { nav.popBackStack() })
         }

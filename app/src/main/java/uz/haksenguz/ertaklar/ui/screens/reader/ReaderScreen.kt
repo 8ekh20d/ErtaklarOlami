@@ -130,6 +130,7 @@ fun ReaderScreen(
     onOpenBook: (String) -> Unit,
     onOpenQuiz: (String) -> Unit,
     onOpenStudio: (key: String, page: Int) -> Unit,
+    onPlay: (route: Any) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
@@ -138,6 +139,7 @@ fun ReaderScreen(
     val toast = rememberToastState()
     val openQuiz by rememberUpdatedState { state.book?.key?.let(onOpenQuiz) }
     val openStudio by rememberUpdatedState { page: Int -> state.book?.key?.let { onOpenStudio(it, page) } }
+    val play by rememberUpdatedState(onPlay)
     // Read-along and bedtime turn pages by themselves.
     var turnTo by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(viewModel) {
@@ -147,6 +149,7 @@ fun ReaderScreen(
                 ReaderEvent.OpenQuiz -> openQuiz()
                 is ReaderEvent.OpenStudio -> openStudio(event.page)
                 is ReaderEvent.Turn -> turnTo = event.view
+                is ReaderEvent.OpenGame -> play(event.route)
             }
         }
     }
@@ -186,11 +189,12 @@ fun ReaderScreen(
             }
             val actions = FinaleActions(
                 onTwin = { state.twin?.let { onOpenBook(it.first) } },
-                onCompare = viewModel::comingSoon,
+                onCompare = viewModel::openCompare,
                 onQuiz = viewModel::openQuiz,
-                onOrder = viewModel::comingSoon,
+                onOrder = viewModel::openOrder,
                 onRestart = { goTo(1) },
-                onShare = share
+                onShare = share,
+                onColor = { viewModel.openColoring(state.lastView) }.takeUnless { state.calm }
             )
             val view = pager.currentPage - 1
 
@@ -255,7 +259,9 @@ fun ReaderScreen(
                                     onGloss = viewModel::openGloss,
                                     onSay = if (state.voices.isNotEmpty()) viewModel::say else null,
                                     highlight = if (pager.settledPage - 1 == shown) state.readAlong.highlight else -1,
-                                    calm = state.calm
+                                    calm = state.calm,
+                                    onColor = { viewModel.openColoring(shown) }.takeUnless { state.calm },
+                                    onTrace = { viewModel.openTrace(shown) }
                                 ),
                                 onAnswer = { idx -> viewModel.answer(shown, idx) }
                             )

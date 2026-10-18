@@ -36,7 +36,11 @@ import uz.haksenguz.ertaklar.data.repository.ProfileRepository
 import uz.haksenguz.ertaklar.data.repository.ProgressRepository
 import uz.haksenguz.ertaklar.data.repository.SettingsRepository
 import uz.haksenguz.ertaklar.data.repository.VoiceRepository
+import uz.haksenguz.ertaklar.navigation.ColoringRoute
+import uz.haksenguz.ertaklar.navigation.CompareRoute
+import uz.haksenguz.ertaklar.navigation.OrderRoute
 import uz.haksenguz.ertaklar.navigation.ReaderRoute
+import uz.haksenguz.ertaklar.navigation.TraceRoute
 
 /** "Xayrli tun": the good-night screen after tonight's last page. [next] says where tomorrow begins. */
 data class Goodnight(val name: String, val next: String)
@@ -93,6 +97,9 @@ sealed interface ReaderEvent {
 
     /** Turn to [view] (read-along and bedtime turn pages by themselves). */
     data class Turn(val view: Int) : ReaderEvent
+
+    /** A game from the play corner. */
+    data class OpenGame(val route: Any) : ReaderEvent
 }
 
 private data class Helpers(val koView: Int?, val reading: Boolean, val glossCard: Pair<String, String>?, val voiceSetting: String?)
@@ -367,9 +374,30 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch { events.send(ReaderEvent.OpenQuiz) }
     }
 
-    /** For parts that arrive in later phases. */
-    fun comingSoon() {
-        viewModelScope.launch { events.send(ReaderEvent.Toast("Bu bo'lim tez orada qo'shiladi")) }
+    /** 🎨 on story page [view] (or the end picture): a guessed riddle colours its uncovered picture. */
+    fun openColoring(view: Int) {
+        val s = state.value
+        val book = s.book ?: return
+        val page = book.pages.getOrNull(view.coerceIn(1, book.pages.size) - 1)
+        val solved = view <= book.pages.size && s.record.answers[view.toString()]?.done == true
+        play(ColoringRoute(book.key, view, reveal = solved && page?.revealLineArt != null))
+    }
+
+    fun openOrder() {
+        state.value.book?.let { play(OrderRoute(it.key)) }
+    }
+
+    fun openCompare() {
+        state.value.book?.let { play(CompareRoute(it.key)) }
+    }
+
+    fun openTrace(view: Int) {
+        state.value.book?.let { play(TraceRoute(it.key, view)) }
+    }
+
+    private fun play(route: Any) {
+        readAlong?.stop()
+        viewModelScope.launch { events.send(ReaderEvent.OpenGame(route)) }
     }
 
     /** Leaving the screen for a while (the studio, the quiz): nothing keeps playing. */

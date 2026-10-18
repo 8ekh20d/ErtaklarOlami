@@ -60,7 +60,9 @@ data class FinaleActions(
     val onQuiz: () -> Unit,
     val onOrder: () -> Unit,
     val onRestart: () -> Unit,
-    val onShare: () -> Unit
+    val onShare: () -> Unit,
+    /** 🎨: the last picture as a colouring page. */
+    val onColor: (() -> Unit)? = null
 )
 
 /** "Tamom!": the last picture with confetti, the stars, the moral and what to do next. */
@@ -79,7 +81,7 @@ fun FinalePage(
 ) {
     BookSheet(modifier) {
         PageHead(chip = null, running = storyText(book.title), chipFirst = false)
-        PageArt(book.endImage, contentDescription = uiText("Tamom!")) {
+        PageArt(book.endImage, contentDescription = uiText("Tamom!"), onColor = actions.onColor, colorAt = Alignment.BottomEnd) {
             Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.TopCenter) {
                 Text(
                     uiText("Tamom!"),

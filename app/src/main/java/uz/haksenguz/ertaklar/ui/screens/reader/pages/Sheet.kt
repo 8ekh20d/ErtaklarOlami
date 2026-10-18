@@ -2,6 +2,7 @@ package uz.haksenguz.ertaklar.ui.screens.reader.pages
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,10 +26,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import uz.haksenguz.ertaklar.ui.components.PokeableArt
+import uz.haksenguz.ertaklar.ui.text.uiText
 import uz.haksenguz.ertaklar.ui.theme.ArtRing
 import uz.haksenguz.ertaklar.ui.theme.ChapterChipBg
 import uz.haksenguz.ertaklar.ui.theme.ChapterChipText
@@ -103,9 +110,19 @@ fun PageHead(chip: String?, running: String, modifier: Modifier = Modifier, chip
     }
 }
 
-/** A page picture in its white frame with a gold ring; tapping it makes it hop. */
+/**
+ * A page picture in its white frame with a gold ring; tapping it makes it hop.
+ * With [onColor], a 🎨 button (at [colorAt]) opens it as a colouring page.
+ */
 @Composable
-fun PageArt(path: String, modifier: Modifier = Modifier, contentDescription: String? = null, overlay: @Composable () -> Unit = {}) {
+fun PageArt(
+    path: String,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    onColor: (() -> Unit)? = null,
+    colorAt: Alignment = Alignment.TopEnd,
+    overlay: @Composable () -> Unit = {}
+) {
     val shape = RoundedCornerShape(18.dp)
     PokeableArt(
         path = path,
@@ -118,6 +135,32 @@ fun PageArt(path: String, modifier: Modifier = Modifier, contentDescription: Str
             .padding(2.dp)
             .border(4.dp, Color.White, shape)
             .clip(shape),
-        overlay = { overlay() }
+        overlay = {
+            overlay()
+            if (onColor != null) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(10.dp),
+                    contentAlignment = colorAt
+                ) { ColorButton(onColor) }
+            }
+        }
     )
+}
+
+/** "🎨": opens the picture as a colouring page. */
+@Composable
+private fun ColorButton(onClick: () -> Unit) {
+    val label = uiText("Rasmni bo'yash")
+    Box(
+        Modifier
+            .size(44.dp)
+            .shadow(5.dp, CircleShape)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.92f))
+            .semantics { contentDescription = label }
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) { Text("🎨", fontSize = 20.sp) }
 }

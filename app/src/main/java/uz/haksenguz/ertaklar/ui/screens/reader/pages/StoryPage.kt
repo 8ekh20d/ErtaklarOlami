@@ -5,9 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -86,6 +89,10 @@ private val KoOnBg = Color(0xFFFDECEE)
 private val ToggleBorder = Color(0xFFF1D8A8)
 private val ReadOnBg = Color(0xFFCCFBF1)
 
+private val TraceText = Color(0xFF9A3412)
+private val TraceBg = Color(0xFFFFF7ED)
+private val TraceRing = Color(0xFFFDBA74)
+
 /** The piece being read aloud. */
 private val Reading = Color(0xFFFDE68A)
 
@@ -107,7 +114,11 @@ class PageHelpers(
     /** The piece being read aloud now (0 the title, then the sentences), or -1. */
     val highlight: Int = -1,
     /** Bedtime: the questions rest. */
-    val calm: Boolean = false
+    val calm: Boolean = false,
+    /** 🎨: the page's picture as a colouring page. */
+    val onColor: (() -> Unit)? = null,
+    /** ✍️ Yozib ko'r: trace the Alifbo page's letter. */
+    val onTrace: (() -> Unit)? = null
 )
 
 /**
@@ -130,7 +141,11 @@ fun StoryPage(
     val headingFont = HeadingFont
     BookSheet(modifier) {
         PageHead(chip = uiText("$view-sahifa"), running = storyText(book.title))
-        PageArt(if (solved && page.revealImage != null) page.revealImage else page.image, contentDescription = storyText(page.title))
+        PageArt(
+            if (solved && page.revealImage != null) page.revealImage else page.image,
+            contentDescription = storyText(page.title),
+            onColor = helpers.onColor
+        )
         PageNote(page, solved, helpers, ko != null)
         HorizontalDivider(color = ArtRing.copy(alpha = 0.6f))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -154,7 +169,10 @@ fun StoryPage(
                 helpers.readsOut -> ReadLine(Hangul.read(page.title))
             }
         }
-        page.letter?.let { AlifboLetter(storyText(it)) }
+        page.letter?.let { letter ->
+            // The tutuq belgisi (ʼ) is a sign, not a letter to trace.
+            AlifboLetter(storyText(letter), onTrace = helpers.onTrace.takeIf { letter.any { it in 'A'..'Z' || it in 'a'..'z' } })
+        }
         val sentences = page.segments.drop(1).ifEmpty { listOf(page.text) }
         val lines: List<Pair<String, Boolean>>? = when {
             ko != null -> sentences.indices.map { (ko.s.getOrElse(it + 1) { "" }) to true }
@@ -433,9 +451,15 @@ private fun Hint(text: String) {
 }
 
 /** An Alifbo page's letter, capital and small, written big. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AlifboLetter(letter: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+private fun AlifboLetter(letter: String, onTrace: (() -> Unit)?) {
+    FlowRow(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        itemVerticalAlignment = Alignment.CenterVertically
+    ) {
         Text(
             letter,
             fontFamily = HeadingFont,
@@ -448,5 +472,20 @@ private fun AlifboLetter(letter: String) {
                 .border(3.dp, MedallionRing, RoundedCornerShape(24.dp))
                 .padding(horizontal = 28.dp, vertical = 4.dp)
         )
+        if (onTrace != null) {
+            Text(
+                uiText("✍️ Yozib ko'r"),
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 15.sp,
+                color = TraceText,
+                modifier = Modifier
+                    .heightIn(min = 40.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(TraceBg)
+                    .border(2.dp, TraceRing, RoundedCornerShape(14.dp))
+                    .clickable(role = Role.Button, onClick = onTrace)
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+            )
+        }
     }
 }
