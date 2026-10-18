@@ -1,57 +1,42 @@
 package uz.haksenguz.ertaklar.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+/** Light only; bedtime gets its own dark theme. */
+private val LightColors = lightColorScheme(
+    primary = Brand500,
     onPrimary = Color.White,
+    primaryContainer = Brand100,
+    onPrimaryContainer = Brand700,
+    secondary = FairySky,
     onSecondary = Color.White,
+    tertiary = FairyMint,
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    background = Brand50,
+    onBackground = Gray800,
+    surface = Color.White,
+    onSurface = Gray800,
+    surfaceVariant = Orange100,
+    onSurfaceVariant = Gray600,
+    outline = Orange200,
+    outlineVariant = Orange100,
+    error = FairyRose
 )
+
+/** The screen background: brand-50 → amber-50 → orange-100. */
+val AppBackground = Brush.linearGradient(listOf(Brand50, Amber50, Orange100))
+
+/** The banner: orange-400 → brand-500 → amber-500. */
+val HeroGradient = Brush.horizontalGradient(listOf(Orange400, Brand500, Amber500))
 
 @Composable
-fun ErtaklarOlamiTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
+fun ErtaklarTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = LightColors,
         typography = Typography,
         content = content
     )

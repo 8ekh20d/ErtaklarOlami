@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Local-only tooling (renders the bundled pictures and data)
+/tools/export/

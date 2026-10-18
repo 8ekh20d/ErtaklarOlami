@@ -1,0 +1,95 @@
+{
+ "days": {
+  "navruz": {
+   "name": "Navro'z",
+   "date": [
+    3,
+    21
+   ]
+  },
+  "seollal": {
+   "name": "Seollal",
+   "cal": "dangi",
+   "date": [
+    1,
+    1
+   ],
+   "long": 1
+  },
+  "chuseok": {
+   "name": "Chusok",
+   "cal": "dangi",
+   "date": [
+    8,
+    15
+   ],
+   "long": 1
+  },
+  "hangul": {
+   "name": "Hangul kuni",
+   "date": [
+    10,
+    9
+   ]
+  },
+  "uztili": {
+   "name": "O'zbek tili bayrami",
+   "date": [
+    10,
+    21
+   ]
+  },
+  "eorini": {
+   "name": "Koreyada bolalar kuni",
+   "date": [
+    5,
+    5
+   ]
+  },
+  "bolalar": {
+   "name": "Bolalar kuni",
+   "date": [
+    6,
+    1
+   ]
+  },
+  "mustaqillik": {
+   "name": "Mustaqillik kuni",
+   "date": [
+    9,
+    1
+   ]
+  },
+  "ramazon": {
+   "name": "Ramazon hayiti",
+   "cal": "islamic-umalqura",
+   "date": [
+    10,
+    1
+   ]
+  },
+  "qurbon": {
+   "name": "Qurbon hayiti",
+   "cal": "islamic-umalqura",
+   "date": [
+    12,
+    10
+   ]
+  }
+ },
+ "months": [
+  "yanvar",
+  "fevral",
+  "mart",
+  "aprel",
+  "may",
+  "iyun",
+  "iyul",
+  "avgust",
+  "sentabr",
+  "oktabr",
+  "noyabr",
+  "dekabr"
+ ],
+ "soon": 21
+}
